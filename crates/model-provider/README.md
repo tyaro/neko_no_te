@@ -1,17 +1,16 @@
 # model-provider
 
-Shared abstraction for model/LLM providers used in the project.
+プロジェクトで利用するモデル（LLM）プロバイダ向けの共通抽象を提供するクレートです。
 
-This crate exposes:
-- `ModelProvider` trait — async trait for `name`, `health`, and `generate`.
-- `GenerateResult` — textual + optional structured response container.
-- `ProviderError` — common error type.
+本クレートが提供する主な要素:
+- `ModelProvider` トレイト — 非同期の `name`, `health`, `generate` を定義します。
+- `GenerateResult` — テキスト応答と、必要に応じた構造化応答を格納する型。
+- `ProviderError` — 共通エラー型。
 
-Adapters for concrete backends should implement `ModelProvider`. The
-crate offers an optional `ollama-impl` feature which provides a thin adapter
-over the local `ollama-client` crate.
+具体的なバックエンド（Ollama、OpenAI、Copilot など）は `ModelProvider` を実装します。
+オプション機能 `ollama-impl` を有効にすると、ローカル `ollama-client` を利用する薄いアダプタが利用できます。
 
-Example (with feature enabled):
+例（`ollama-impl` 有効時）:
 
 ```rust
 use model_provider::ollama_impl::OllamaProvider;

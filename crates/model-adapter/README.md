@@ -1,17 +1,12 @@
 # model-adapter
 
-Adapter abstraction and a default adapter for `llama3.1:8b`.
+モデル固有の呼び出しフォーマット（function-calling / tools / prompt 形式）を内包するアダプタ抽象と、`llama3.1:8b` 用のデフォルトアダプタを提供します。
 
-Purpose
-- Provide a small plugin-style API for model-specific invocation formats
-  (function-calling / tools / prompt formatting) while keeping the core
-  application provider-agnostic.
+## 目的
+コアは `ModelProvider` を通した汎用的な generate を担い、各モデル固有の入力整形や関数呼び出しフォーマットは `ModelAdapter` に委ねることで拡張性を確保します。
 
-Built-in default
-- `Llama3DefaultAdapter` — supports `llama3.1:8b`. It serializes provided
-  `ToolSpec` entries into a JSON snippet appended to the prompt, then
-  delegates to the configured `ModelProvider`.
+## 組み込みデフォルト
+- `Llama3DefaultAdapter` — `llama3.1:8b` をサポートします。`ToolSpec` を JSON にシリアライズしてプロンプト末尾に付与し、`ModelProvider` に委譲します。
 
-Extending
-- Create a new crate under `crates/plugins/` or `plugins/` implementing
-  `ModelAdapter` to support additional models (e.g. `qwen3`, `phi4-mini`).
+## 拡張方法
+追加モデル対応は `crates/plugins/` または `plugins/` に新しいクレートを作成し、`ModelAdapter` を実装してください（例: `qwen3`, `phi4-mini` など）。

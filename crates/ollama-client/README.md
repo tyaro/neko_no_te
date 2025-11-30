@@ -1,9 +1,9 @@
 # ollama-client
 
-Lightweight Rust client for talking to a local Ollama HTTP endpoint.
+ローカルに起動した Ollama HTTP エンドポイントとやり取りするための軽量な Rust クライアントです。
 
-Usage
-- Create a client with the base URL of your local Ollama instance (example uses the common `http://localhost:11434/`):
+## 使用例
+ローカルの Ollama のベース URL（例: `http://localhost:11434/`）を指定してクライアントを作成します。
 
 ```rust
 use ollama_client::OllamaClient;
@@ -14,12 +14,12 @@ async fn main() -> anyhow::Result<()> {
     let healthy = client.health().await?;
     println!("health: {}", healthy);
 
-    let resp = client.generate("llama2", "Say hello in Japanese.").await?;
+    let resp = client.generate("llama2", "日本語で挨拶してください。").await?;
     println!("response: {}", resp);
     Ok(())
 }
 ```
 
-Notes
-- The crate posts JSON to `/api/generate` relative to the configured base URL. If your local installation uses a different endpoint, adjust the base URL accordingly.
-- The crate returns the raw response body as a string. If you prefer structured responses, deserialize into a custom type using `serde_json`.
+## 注意点
+- このクレートは設定されたベース URL に対して相対パス `/api/generate` に JSON を POST します。ローカル環境で異なるエンドポイントを使っている場合はベース URL を調整してください。
+- レスポンスは生の本文（文字列）で返します。構造化された応答が必要な場合は `serde_json` でデシリアライズしてください。
