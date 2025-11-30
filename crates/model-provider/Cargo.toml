@@ -8,8 +8,8 @@ license = "MIT"
 
 [dependencies]
 async-trait = "0.1"
-thiserror = "1.0"
-serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0.17"
+serde = { version = "1.0.228", features = ["derive"] }
 
 # Optional adapter for the local Ollama client crate
 ollama-client = { path = "../ollama-client", optional = true }

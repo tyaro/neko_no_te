@@ -3,6 +3,7 @@
 プロジェクトで利用するモデル（LLM）プロバイダ向けの共通抽象を提供するクレートです。
 
 本クレートが提供する主な要素:
+
 - `ModelProvider` トレイト — 非同期の `name`, `health`, `generate` を定義します。
 - `GenerateResult` — テキスト応答と、必要に応じた構造化応答を格納する型。
 - `ProviderError` — 共通エラー型。
