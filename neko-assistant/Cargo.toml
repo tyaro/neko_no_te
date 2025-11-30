@@ -7,7 +7,14 @@ description = "neko-assistant helper utilities (plugin management CLI + future G
 license = "MIT"
 
 [dependencies]
-clap = { version = "4", features = ["derive"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+clap = { version = "4.5.53", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+toml = "0.9.8"
+anyhow = "1.0"
+
+[features]
+# Enable a GUI implementation. The concrete GPUI crate can be added here as an optional dependency
+# e.g. gpui = { version = "0.x", optional = true } and then included in this feature.
+gui = []

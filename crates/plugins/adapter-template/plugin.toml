@@ -1,0 +1,13 @@
+## plugin.toml - plugin metadata for runtime discovery and crates.io package metadata example
+# Required fields used by `neko-assistant` UI: `name`, `description`, `version`, `author`
+# Fill these and keep this file at the crate root so the runtime can read it when loading plugins.
+
+name = "your-adapter-name"
+description = "Short description of your adapter (one line)."
+version = "0.1.0"
+author = "Your Name <you@example.com>"
+
+# Optional fields (examples):
+# repository = "https://github.com/your/repo"
+# homepage = "https://your.project.homepage"
+# icon = "icon.png"

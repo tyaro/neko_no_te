@@ -1,10 +1,17 @@
 [package]
-name = "adapter-template"
+name = "neko-plugin-adapter-template"
 version = "0.1.0"
 edition = "2021"
 authors = ["your-name <you@example.com>"]
-description = "Template crate for implementing a ModelAdapter for neko_no_te."
+description = "Template crate for implementing a ModelAdapter for neko_no_te. Replace package name and metadata before publishing to crates.io."
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://github.com/tyaro/neko_no_te"
+documentation = "https://docs.rs"
+keywords = ["neko","plugin","adapter","llm","model"]
+categories = ["development-tools", "network-programming"]
+publish = true
 
 [dependencies]
 async-trait = "0.1"
