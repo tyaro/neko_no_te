@@ -1,0 +1,16 @@
+[package]
+name = "adapter-template"
+version = "0.1.0"
+edition = "2021"
+authors = ["your-name <you@example.com>"]
+description = "Template crate for implementing a ModelAdapter for neko_no_te."
+license = "MIT"
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Workspace local dependencies
+model-adapter = { path = "../../model-adapter" }
+model-provider = { path = "../../model-provider" }
