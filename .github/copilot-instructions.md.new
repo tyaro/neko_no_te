@@ -1,0 +1,63 @@
+```markdown
+# Purpose
+
+このファイルは、`neko_no_te` リポジトリ内でAIコーディングエージェント（Copilot 風）を素早く生産的に動かすための短く実用的な指示です。
+
+## 最初に行うチェック（順番通り）
+- 会話とドキュメントは**日本語**で行う。
+- 変更対象は `neko_no_te/` が中心。`zed-fork/` は参照用（改造しない）。
+- 変更をコミットする前に関連ドキュメント（各クレートの `docs/` と `TESTS.md`）を更新する。
+
+## 主要なファイルと場所（確認優先度高→低）
+- `neko-assistant/` — メインGUIクレート（会話管理・プラグインローダ等）
+- `plugins/` — プラグイン群（ランタイムにロード可能と記載あり）
+- `docs/README.md`, `neko-assistant/README.md` — プロジェクト方針・構成
+- `.github/copilot-instructions.md` — （このファイル）エージェント向けポリシー
+
+## ビルド・テスト・ドキュメント生成（実行例）
+- ルート（`neko_no_te/`）での一般的な操作:
+
+```powershell
+# 全体ビルド
+cargo build --workspace
+
+# 全テスト（ワークスペース）
+cargo test --workspace
+
+# 個別クレートのテスト
+cargo test -p neko-assistant
+
+# フォーマットと静的解析（存在する場合）
+cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+
+# ドキュメント生成（クレート単位）
+cargo doc -p neko-assistant --no-deps
+```
+
+※ツールチェインや clippy の設定は環境依存なので、実行前に `rust-toolchain.toml` や `clippy.toml` の有無を確認してください。
+
+## プロジェクト固有の慣習とパターン
+- 機能ごとにクレートを作る（新機能は新しいクレートを検討）。
+- 各クレートに `docs/` を置き、クレート単位での `TESTS.md` に実行方法を一行追加する（CI 互換）。
+- プラグインは `plugins/` 配下で管理され、README に「ビルド無しで追加・削除可能」と明記されているため、プラグインの動的ロード方式をコード内で確認すること（`neko-assistant/src` 内で `plugin` をキーワード検索）。
+- 変更は最小差分で、1機能＝1コミットでまとめる。
+
+## PR 前の必須チェックリスト
+- `cargo test --workspace` を実行し、失敗がないことを確認。
+- `cargo fmt` を通す。
+- 該当クレートの `docs/` または `TESTS.md` を更新。
+- 影響範囲が大きい場合は `zed-fork/` の類似実装を参照して互換性を保つ。
+
+## 探し方のヒント（実例）
+- プラグイン関連コードを探す: リポジトリルートで `rg "plugin|plugins"` を実行。
+- クレート一覧や依存を見る: `cargo metadata --no-deps --format-version 1` を使う。
+
+## コミュニケーションと確認
+- 変更前にドキュメントを更新し、ユーザー（リポジトリ所有者）に差分を提示して確認を得る。
+- 不明点は短い具体的な質問で尋ねる（例: "新プラグインの動的ロードはどのディレクトリを参照しますか?"）。
+
+## 追加参照ファイル
+- `neko_no_te/docs/README.md`, `neko_no_te/neko-assistant/README.md`, `neko_no_te/plugins/`
+
+```
