@@ -42,15 +42,15 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
             let dir_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
             let enabled = enabled_list.contains(&dir_name);
 
-            // Attempt to read plugin.toml
+            // Attempt to read and validate plugin.toml
             let plugin_toml = path.join("plugin.toml");
             let metadata = if plugin_toml.exists() {
-                match fs::read_to_string(&plugin_toml) {
-                    Ok(s) => match toml::from_str::<PluginMetadata>(&s) {
-                        Ok(m) => Some(m),
-                        Err(_) => None,
-                    },
-                    Err(_) => None,
+                match crate::plugins::validation::validate_manifest(&plugin_toml) {
+                    Ok((m, _caps)) => Some(m),
+                    Err(err) => {
+                        eprintln!("warning: invalid plugin manifest {:?}: {}", plugin_toml, err);
+                        None
+                    }
                 }
             } else {
                 None
