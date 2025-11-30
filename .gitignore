@@ -37,6 +37,21 @@ env/
 tmp/
 temp/
 
+# Test logs and general logs directory used by tests
+/tests/**/*.log
+/tests/*.log
+/logs/
+
+# Rust-specific build artifacts and intermediate files
+**/*.rmeta
+**/*.dSYM/
+**/*.d
+**/*.o
+**/incremental/
+**/build/
+*.profraw
+
+
 # Misc
 .cache/
 .cargo/
