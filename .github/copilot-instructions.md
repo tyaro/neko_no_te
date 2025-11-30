@@ -10,6 +10,7 @@
 - 会話とドキュメントは**日本語**で行う。
 - 変更対象は `neko_no_te/` が中心。`zed-fork/` は参照用（改造しない）。
 - 変更をコミットする前に関連ドキュメント（各クレートの `docs/` と `TESTS.md`）を更新する。
+ - 変更を始める前に `docs/development/coding-guidelines.md` を読み、モジュール分割やコミット方針に従うこと。
 
 ## 主要なファイルと場所（確認優先度高→低）
 - `neko-assistant/` — メインGUIクレート（会話管理・プラグインローダ等）
@@ -45,6 +46,7 @@ cargo doc -p neko-assistant --no-deps
 - 各クレートに `docs/` を置き、クレート単位での `TESTS.md` に実行方法を一行追加する（CI 互換）。
 - プラグインは `plugins/` 配下で管理され、README に「ビルド無しで追加・削除可能」と明記されているため、プラグインの動的ロード方式をコード内で確認すること（`neko-assistant/src` 内で `plugin` をキーワード検索）。
 - 変更は最小差分で、1機能＝1コミットでまとめる。
+ - プロジェクトは「小分け（モジュール分割）」を推奨します。`src/<module>/mod.rs` + `src/<module>/*.rs` の構成に沿って実装し、責務ごとにファイルを分割してください。詳細は `docs/development/coding-guidelines.md` を参照。
 
 ## PR 前の必須チェックリスト
 - `cargo test --workspace` を実行し、失敗がないことを確認。
