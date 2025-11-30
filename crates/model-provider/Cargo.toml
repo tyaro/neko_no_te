@@ -1,0 +1,19 @@
+[package]
+name = "model-provider"
+version = "0.1.0"
+edition = "2021"
+authors = ["tyaro"]
+description = "Abstraction crate for LLM/model providers (Ollama, GPT, Copilot, etc.)."
+license = "MIT"
+
+[dependencies]
+async-trait = "0.1"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+# Optional adapter for the local Ollama client crate
+ollama-client = { path = "../ollama-client", optional = true }
+
+[features]
+default = []
+ollama-impl = ["ollama-client"]
