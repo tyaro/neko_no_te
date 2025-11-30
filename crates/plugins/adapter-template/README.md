@@ -1,35 +1,39 @@
 # adapter-template
 
-This template shows how to implement a `ModelAdapter` for neko_no_te.
+このテンプレートは、`neko_no_te` 用の `ModelAdapter` を実装する方法を示します。
 
-Quick start
-1. Copy this directory to `crates/plugins/<your-adapter>`.
-2. Update `Cargo.toml` metadata (name, authors, description).
-3. Implement your model-specific serialization in `src/lib.rs` (see `TODO`).
-4. Run `cargo test -p <your-adapter>` to verify.
+クイックスタート
 
-Plugin metadata
-- Place a `plugin.toml` file at the crate root with the following required fields:
-	- `name`: the plugin / crate name
-	- `description`: short one-line description shown in the UI
-	- `version`: semver string (e.g. "0.1.0")
-	- `author`: name and contact (e.g. "Alice <alice@example.com>")
+1. このディレクトリを `crates/plugins/<your-adapter>` にコピーします。
+2. `Cargo.toml` のメタデータ（`name`、`authors`、`description` など）を更新します。
+3. `src/lib.rs` にモデル固有のシリアライズ／リクエスト形成処理を実装します（TODO の箇所を参照）。
+4. 動作確認のために `cargo test -p <your-adapter>` を実行します。
 
-Publishing to crates.io
-- Before publishing, update `Cargo.toml` with a unique `name`, `description`, proper `authors`, and `license`.
-- Ensure tests pass: `cargo test -p <your-adapter>`.
-- To publish:
+プラグインメタデータ
+
+- クレートルートに `plugin.toml` を置き、以下の必須フィールドを含めてください。
+  - `name`: プラグイン／クレート名
+  - `description`: UI に表示する短い説明（1 行）
+  - `version`: SemVer 文字列（例: "0.1.0"）
+  - `author`: 作成者名と連絡先（例: "Alice <alice@example.com>"）
+
+crates.io への公開
+
+- 公開前に `Cargo.toml` を適切に更新してください（ユニークな `name`、説明、`authors`、`license` など）。
+- テストが通ることを確認してください: `cargo test -p <your-adapter>`。
+- 公開手順の一例:
 
 ```powershell
-# login once (if not already):
+# 初回ログイン（未ログインの場合）:
 cargo login <your-api-token>
-# then publish from workspace root or crate folder:
+# crate フォルダもしくはワークスペースルートから公開:
 cd crates/plugins/<your-adapter>
 cargo publish --allow-dirty
 ```
 
-Note: `--allow-dirty` can be useful during development, but remove it when publishing a final release. Also ensure `package.metadata` and `README.md` are correct for crates.io display.
+注意: 開発中は `--allow-dirty` を一時的に使うことがありますが、正式なリリース時には外してください。また、`package.metadata` や `README.md` が crates.io 表示に適切であることを確認してください。
 
-Notes
-- Use `model-adapter` and `model-provider` crates from the workspace as references.
-- Keep adapter logic focused on formatting/serializing the request and parsing the response; network/transport is the provider's responsibility.
+補足
+
+- 実装の参考としてワークスペース内の `model-adapter` と `model-provider` を参照してください。
+- Adapter の責務は主にリクエストの整形とレスポンスのパースに集中させ、ネットワークやトランスポートは `provider` 側で扱うようにしてください。

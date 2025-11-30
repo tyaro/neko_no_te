@@ -7,12 +7,30 @@ use std::path::Path;
 /// Discover plugin directories under the repository `plugins/` directory.
 /// If a `plugin.toml` is present in each plugin dir it will be parsed and returned as metadata.
 pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
-    let plugins_dir = repo_root.join("plugins");
+    // Prefer a `plugins/` folder next to the running executable (development/runtime),
+    // otherwise fall back to the repository `plugins/` directory passed as `repo_root`.
+    let exe_plugins_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|parent| parent.join("plugins")));
+
+    let (plugins_dir, enabled_list) = if let Some(ref dir) = exe_plugins_dir {
+        if dir.exists() {
+            // If plugins are present next to the executable, try to load enabled.json from there.
+            let exe_root = dir.parent().unwrap_or_else(|| Path::new("."));
+            let enabled = load_enabled_list(exe_root).unwrap_or_default();
+            (dir.clone(), enabled)
+        } else {
+            let dir = repo_root.join("plugins");
+            let enabled = load_enabled_list(repo_root).unwrap_or_default();
+            (dir, enabled)
+        }
+    } else {
+        let dir = repo_root.join("plugins");
+        let enabled = load_enabled_list(repo_root).unwrap_or_default();
+        (dir, enabled)
+    };
+
     let mut entries = vec![];
-
-    // Load enabled list if present
-    let enabled_list = load_enabled_list(repo_root).unwrap_or_default();
-
     if !plugins_dir.exists() {
         return Ok(entries);
     }
