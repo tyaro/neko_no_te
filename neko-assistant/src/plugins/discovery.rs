@@ -1,4 +1,4 @@
-use crate::plugins::metadata::{PluginEntry, PluginMetadata};
+use crate::plugins::metadata::PluginEntry;
 use crate::plugins::enabled::load_enabled_list;
 use std::fs;
 use std::io;

@@ -2,7 +2,7 @@
 
 目的
 
-- `zed-fork` の拡張（Extension）設計を参考に、`neko_no_te` に段階的に導入可能な「簡易 ExtensionHost」設計を示す。
+- `zed` の拡張（Extension）設計を参考に、`neko_no_te` に段階的に導入可能な「簡易 ExtensionHost」設計を示す。
 - 要求: manifest 読込、capability ベースの権限チェック、外部プロセス実行のガード、WASM 実行の取り込みインタフェース、既存プラグイン方式との互換性を保つこと。
 
 設計方針（高レベル）

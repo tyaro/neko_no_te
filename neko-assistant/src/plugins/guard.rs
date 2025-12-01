@@ -1,5 +1,4 @@
 use crate::plugins::validation;
-use crate::plugins::metadata::PluginMetadata;
 use anyhow::{Context, Result};
 use std::path::Path;
 use std::process::Command;

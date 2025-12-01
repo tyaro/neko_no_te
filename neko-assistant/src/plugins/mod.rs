@@ -4,7 +4,7 @@ pub mod validation;
 pub mod guard;
 pub mod enabled;
 
-pub use metadata::{PluginEntry, PluginMetadata};
+pub use metadata::PluginEntry;
 pub use discovery::discover_plugins;
 pub use enabled::{disable_plugin, enable_plugin};
-pub use guard::spawn_guarded;
+// `spawn_guarded` currently unused; keep implementation in `guard` but do not re-export yet.

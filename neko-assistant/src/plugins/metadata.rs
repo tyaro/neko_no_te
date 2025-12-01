@@ -9,7 +9,7 @@ pub struct PluginMetadata {
     pub author: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PluginEntry {
     /// Directory name under `plugins/`
     pub dir_name: String,

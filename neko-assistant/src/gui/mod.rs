@@ -1,19 +1,17 @@
 pub mod console;
-pub mod gpui;
+pub mod chat;
 
 pub use console::run_gui as run_gui_console;
-pub use gpui::run_gui as run_gui_gpui;
+pub use chat::run_gui as run_gui_gpui;
 
 #[allow(dead_code)]
 pub fn run_gui(repo_root: &std::path::Path) -> std::io::Result<()> {
-    // Choose implementation by feature
-    #[cfg(feature = "gui")]
-    {
-        return run_gui_gpui(repo_root);
-    }
-
-    #[cfg(not(feature = "gui"))]
-    {
-        return run_gui_console(repo_root);
+    // Prefer the GPUI implementation at runtime; if it fails, fall back to console.
+    match run_gui_gpui(repo_root) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            eprintln!("GUI failed to start ({}). Falling back to console.", e);
+            run_gui_console(repo_root)
+        }
     }
 }
