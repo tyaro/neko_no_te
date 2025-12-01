@@ -1,1 +1,0 @@
-D:\develop\neko_no_te\neko-assistant\target\debug\neko-assistant.exe: D:\develop\neko_no_te\neko-assistant\src\gui.rs D:\develop\neko_no_te\neko-assistant\src\main.rs D:\develop\neko_no_te\neko-assistant\src\plugins.rs

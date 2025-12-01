@@ -1,6 +1,9 @@
 # Ignore Cargo build directories
 /target/
 **/target/
+tartget/
+target
+
 
 # Ignore Cargo generated files
 **/*.rlib
@@ -62,3 +65,8 @@ temp/
 
 # Docker
 docker-compose.override.yml
+
+# Ignore cargo cached/alternate target dirs
+target-cached/
+**/target-cached/
+neko-assistant/target/
