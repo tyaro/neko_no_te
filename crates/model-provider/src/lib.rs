@@ -52,6 +52,29 @@ pub mod ollama_impl {
             let client = OllamaClient::new(base_url)?;
             Ok(Self { client, name: "ollama".to_string() })
         }
+        
+        /// ストリーミングで生成（コールバックで部分応答を受け取る）
+        pub async fn generate_stream<F>(
+            &self,
+            model: &str,
+            prompt: &str,
+            callback: F,
+        ) -> Result<GenerateResult, ProviderError>
+        where
+            F: FnMut(&str),
+        {
+            let text = self.client
+                .generate_stream(model, prompt, callback)
+                .await
+                .map_err(|e| ProviderError::Http(e.to_string()))?;
+            
+            let structured = match serde_json::from_str::<serde_json::Value>(&text) {
+                Ok(v) => Some(v),
+                Err(_) => None,
+            };
+            
+            Ok(GenerateResult { text, structured })
+        }
     }
 
     #[async_trait]

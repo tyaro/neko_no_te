@@ -10,6 +10,9 @@ license = "MIT"
 async-trait = "0.1"
 thiserror = "2.0.17"
 serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+url = "2"
 
 # Optional adapter for the local Ollama client crate
 ollama-client = { path = "../ollama-client", optional = true }

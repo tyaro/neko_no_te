@@ -1,0 +1,12 @@
+[package]
+name = "neko-ui"
+version = "0.1.0"
+edition = "2021"
+authors = ["tyaro"]
+description = "Custom UI components for Neko Assistant"
+license = "MIT"
+
+[dependencies]
+gpui = "0.2.2"
+gpui-component = { version = "0.4.2" }
+ui-utils = { path = "../ui-utils" }

@@ -1,0 +1,16 @@
+[package]
+name = "app-config"
+version = "0.1.0"
+edition = "2021"
+authors = ["tyaro"]
+description = "Configuration management for neko-assistant"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.9"
+anyhow = "1.0"
+dirs = "5.0"
+
+[dev-dependencies]
+tempfile = "3.8"

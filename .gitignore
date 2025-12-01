@@ -48,6 +48,11 @@ temp/
 # Rust-specific build artifacts and intermediate files
 **/*.rmeta
 **/*.dSYM/
+
+# Application data directory (chat history, sessions, config)
+# Typically located at ~/.neko-assistant/ or %USERPROFILE%\.neko-assistant\
+.neko-assistant/
+**/.neko-assistant/
 **/*.d
 **/*.o
 **/incremental/

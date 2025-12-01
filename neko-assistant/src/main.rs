@@ -1,9 +1,15 @@
+#[macro_use]
+extern crate ui_utils;
+
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod plugins;
 use plugins::{discover_plugins, disable_plugin, enable_plugin};
 mod gui;
+mod message_handler;
+mod mcp_client;
+mod mcp_manager;
 // `run_gui` is called with full path `gui::run_gui()` below; importing the name is unused.
 
 /// Simple CLI for plugin management (foundation for GUI integration).
@@ -30,6 +36,40 @@ enum Commands {
     Enable { name: String },
     /// Disable a plugin by name
     Disable { name: String },
+    /// Test MCP connection
+    TestMcp,
+}
+
+async fn test_mcp() -> anyhow::Result<()> {
+    use crate::mcp_client::load_mcp_config;
+    use crate::mcp_manager::McpManager;
+    use std::sync::Arc;
+
+    println!("Loading MCP configuration...");
+    let configs = load_mcp_config().map_err(|e| anyhow::anyhow!(e))?;
+    println!("Found {} MCP server(s)", configs.len());
+
+    let manager = Arc::new(McpManager::new(configs));
+    
+    println!("Initializing MCP servers...");
+    manager.initialize_all().await.map_err(|e| anyhow::anyhow!(e))?;
+    println!("✓ All servers initialized");
+
+    println!("\nFetching available tools...");
+    let tools = manager.get_all_tools().await.map_err(|e| {
+        eprintln!("Error fetching tools: {}", e);
+        anyhow::anyhow!("Failed to fetch tools: {}", e)
+    })?;
+    
+    println!("✓ Found {} tool(s)", tools.len());
+    
+    println!("\nAvailable tools:");
+    for (i, (server_name, tool)) in tools.iter().enumerate() {
+        println!("{}. [{}] {} - {}", i + 1, server_name, tool.name, tool.description);
+    }
+
+    println!("\n✓ MCP test completed successfully");
+    Ok(())
 }
 
 #[tokio::main]
@@ -66,6 +106,10 @@ async fn main() -> anyhow::Result<()> {
             Some(Commands::Disable { name }) => {
                 disable_plugin(&repo, &name)?;
                 println!("Disabled plugin: {}", name);
+            }
+            Some(Commands::TestMcp) => {
+                println!("Testing MCP connection...");
+                test_mcp().await?;
             }
             None => {
                 // No subcommand and --cli provided: show help-ish message

@@ -5,6 +5,7 @@ use std::process::Command;
 
 /// Spawn a process on behalf of a plugin, but enforce capability checks from its manifest.
 /// `plugin_dir` should be the directory containing `plugin.toml`.
+#[allow(dead_code)]
 pub fn spawn_guarded(plugin_dir: &Path, cmd: &str, args: &[&str]) -> Result<std::process::ExitStatus> {
     let manifest_path = plugin_dir.join("plugin.toml");
     if !manifest_path.exists() {

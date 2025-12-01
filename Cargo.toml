@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "neko-assistant",
+    "crates/model-provider",
+    "crates/model-adapter",
+    "crates/ollama-client",
+    "crates/app-config",
+    "crates/chat-engine",
+    "crates/chat-history",
+    "crates/plugins/adapter-template",
+    "crates/ui-utils",
+    "crates/neko-ui",
+]
+
+resolver = "2"
+
+[workspace.package]
+authors = ["tyaro"]
+edition = "2021"
+license = "MIT"

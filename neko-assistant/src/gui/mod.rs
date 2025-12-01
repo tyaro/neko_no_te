@@ -1,8 +1,11 @@
 pub mod console;
 pub mod chat;
+pub mod settings;
+pub mod plugins;
 
 pub use console::run_gui as run_gui_console;
 pub use chat::run_gui as run_gui_gpui;
+pub use plugins::PluginListView;
 
 #[allow(dead_code)]
 pub fn run_gui(repo_root: &std::path::Path) -> std::io::Result<()> {

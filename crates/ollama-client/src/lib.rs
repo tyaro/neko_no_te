@@ -41,26 +41,78 @@ impl OllamaClient {
     pub async fn generate(&self, model: &str, prompt: &str) -> Result<String, reqwest::Error> {
         let mut url = self.base.clone();
         // join with a relative path; if base already contains a path this will work
+        url.set_path(&format!("{}/api/generate", url.path().trim_end_matches('/')))
+;
+
+        let payload = serde_json::json!({
+            "model": model,
+            "prompt": prompt,
+            "stream": false,
+        });
+
+        let res = self.client.post(url).json(&payload).send().await?;
+        
+        if !res.status().is_success() {
+            return Err(res.error_for_status().unwrap_err());
+        }
+        
+        let json_text = res.text().await?;
+        
+        // Ollama レスポンスから "response" フィールドを抽出
+        match serde_json::from_str::<serde_json::Value>(&json_text) {
+            Ok(response) => {
+                let text = response["response"]
+                    .as_str()
+                    .unwrap_or(&json_text)
+                    .to_string();
+                Ok(text)
+            }
+            Err(_) => {
+                // JSON パースに失敗した場合はそのまま返す
+                Ok(json_text)
+            }
+        }
+    }
+    
+    /// ストリーミングで生成（コールバックで部分応答を受け取る）
+    pub async fn generate_stream<F>(
+        &self,
+        model: &str,
+        prompt: &str,
+        mut callback: F,
+    ) -> Result<String, reqwest::Error>
+    where
+        F: FnMut(&str),
+    {
+        let mut url = self.base.clone();
         url.set_path(&format!("{}/api/generate", url.path().trim_end_matches('/')));
 
         let payload = serde_json::json!({
             "model": model,
             "prompt": prompt,
+            "stream": true,
         });
 
         let res = self.client.post(url).json(&payload).send().await?;
-        let status = res.status();
-        let text = res.text().await?;
-
-        if !status.is_success() {
-            // surface non-2xx for caller to handle
-            Err(reqwest::Error::new(
-                reqwest::StatusCode::from_u16(status.as_u16()).unwrap_or(reqwest::StatusCode::INTERNAL_SERVER_ERROR),
-                format!("server returned {}: {}", status, text),
-            ))
-        } else {
-            Ok(text)
+        
+        if !res.status().is_success() {
+            return Err(res.error_for_status().unwrap_err());
         }
+        
+        let text = res.text().await?;
+        let mut full_response = String::new();
+        
+        // 各行が個別のJSONオブジェクト
+        for line in text.lines() {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(chunk) = json["response"].as_str() {
+                    full_response.push_str(chunk);
+                    callback(chunk);
+                }
+            }
+        }
+        
+        Ok(full_response)
     }
 }
 
