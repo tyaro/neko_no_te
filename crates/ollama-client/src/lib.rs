@@ -41,8 +41,10 @@ impl OllamaClient {
     pub async fn generate(&self, model: &str, prompt: &str) -> Result<String, reqwest::Error> {
         let mut url = self.base.clone();
         // join with a relative path; if base already contains a path this will work
-        url.set_path(&format!("{}/api/generate", url.path().trim_end_matches('/')))
-;
+        url.set_path(&format!(
+            "{}/api/generate",
+            url.path().trim_end_matches('/')
+        ));
 
         let payload = serde_json::json!({
             "model": model,
@@ -51,13 +53,13 @@ impl OllamaClient {
         });
 
         let res = self.client.post(url).json(&payload).send().await?;
-        
+
         if !res.status().is_success() {
             return Err(res.error_for_status().unwrap_err());
         }
-        
+
         let json_text = res.text().await?;
-        
+
         // Ollama レスポンスから "response" フィールドを抽出
         match serde_json::from_str::<serde_json::Value>(&json_text) {
             Ok(response) => {
@@ -73,7 +75,7 @@ impl OllamaClient {
             }
         }
     }
-    
+
     /// ストリーミングで生成（コールバックで部分応答を受け取る）
     pub async fn generate_stream<F>(
         &self,
@@ -85,7 +87,10 @@ impl OllamaClient {
         F: FnMut(&str),
     {
         let mut url = self.base.clone();
-        url.set_path(&format!("{}/api/generate", url.path().trim_end_matches('/')));
+        url.set_path(&format!(
+            "{}/api/generate",
+            url.path().trim_end_matches('/')
+        ));
 
         let payload = serde_json::json!({
             "model": model,
@@ -94,14 +99,14 @@ impl OllamaClient {
         });
 
         let res = self.client.post(url).json(&payload).send().await?;
-        
+
         if !res.status().is_success() {
             return Err(res.error_for_status().unwrap_err());
         }
-        
+
         let text = res.text().await?;
         let mut full_response = String::new();
-        
+
         // 各行が個別のJSONオブジェクト
         for line in text.lines() {
             if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
@@ -111,7 +116,7 @@ impl OllamaClient {
                 }
             }
         }
-        
+
         Ok(full_response)
     }
 }

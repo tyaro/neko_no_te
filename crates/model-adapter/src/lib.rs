@@ -27,7 +27,7 @@ impl ToolSpec {
             schema: None,
         }
     }
-    
+
     /// パラメータ付きツール定義
     pub fn with_parameters(name: &str, description: &str, parameters: serde_json::Value) -> Self {
         Self {
@@ -115,10 +115,10 @@ impl ModelAdapter for Llama3DefaultAdapter {
 }
 
 /// Adapter for Phi-4-mini-instruct model.
-/// 
+///
 /// This adapter uses Phi-4-mini-instruct's specific chat format:
 /// `<|system|>...<|end|><|user|>...<|end|><|assistant|>`
-/// 
+///
 /// It also supports native function calling with the `<|tool|>...</|tool|>` format.
 pub struct Phi4MiniAdapter;
 
@@ -126,7 +126,7 @@ impl Phi4MiniAdapter {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Format tools in Phi-4-mini-instruct format
     fn format_tools(tools: &[ToolSpec]) -> String {
         let tools_json: Vec<serde_json::Value> = tools
@@ -139,14 +139,21 @@ impl Phi4MiniAdapter {
                 })
             })
             .collect();
-        
-        format!("<|tool|>\n{}\n<|/tool|>", serde_json::to_string_pretty(&tools_json).unwrap())
+
+        format!(
+            "<|tool|>\n{}\n<|/tool|>",
+            serde_json::to_string_pretty(&tools_json).unwrap()
+        )
     }
-    
+
     /// Format prompt in Phi-4-mini-instruct chat format
-    fn format_prompt(system: Option<&str>, user_prompt: &str, tools: Option<&[ToolSpec]>) -> String {
+    fn format_prompt(
+        system: Option<&str>,
+        user_prompt: &str,
+        tools: Option<&[ToolSpec]>,
+    ) -> String {
         let mut prompt = String::new();
-        
+
         // System message with optional tools
         let mut system_msg = system.unwrap_or("You are a helpful assistant.").to_string();
         if let Some(t) = tools {
@@ -155,19 +162,19 @@ impl Phi4MiniAdapter {
                 system_msg.push_str(&Self::format_tools(t));
             }
         }
-        
+
         prompt.push_str("<|system|>\n");
         prompt.push_str(&system_msg);
         prompt.push_str("<|end|>\n");
-        
+
         // User message
         prompt.push_str("<|user|>\n");
         prompt.push_str(user_prompt);
         prompt.push_str("<|end|>\n");
-        
+
         // Assistant response starts here
         prompt.push_str("<|assistant|>\n");
-        
+
         prompt
     }
 }
@@ -194,7 +201,7 @@ impl ModelAdapter for Phi4MiniAdapter {
     ) -> Result<GenerateResult, ProviderError> {
         // Format prompt in Phi-4-mini-instruct format
         let formatted = Self::format_prompt(None, prompt, tools);
-        
+
         provider.generate(model, &formatted).await
     }
 }
@@ -207,10 +214,21 @@ mod tests {
     struct DummyProvider;
     #[async_trait::async_trait]
     impl model_provider::ModelProvider for DummyProvider {
-        fn name(&self) -> &str { "dummy" }
-        async fn health(&self) -> Result<bool, model_provider::ProviderError> { Ok(true) }
-        async fn generate(&self, _model: &str, prompt: &str) -> Result<GenerateResult, model_provider::ProviderError> {
-            Ok(GenerateResult { text: format!("echo: {}", prompt), structured: None })
+        fn name(&self) -> &str {
+            "dummy"
+        }
+        async fn health(&self) -> Result<bool, model_provider::ProviderError> {
+            Ok(true)
+        }
+        async fn generate(
+            &self,
+            _model: &str,
+            prompt: &str,
+        ) -> Result<GenerateResult, model_provider::ProviderError> {
+            Ok(GenerateResult {
+                text: format!("echo: {}", prompt),
+                structured: None,
+            })
         }
     }
 
@@ -218,25 +236,38 @@ mod tests {
     async fn llama_adapter_invokes_provider() {
         let adapter = Llama3DefaultAdapter::new();
         let provider = DummyProvider;
-        let tool = ToolSpec { name: "t1".into(), description: Some("d".into()), schema: None };
-        let res = adapter.invoke(&provider, "llama3.1:8b", "hello", Some(&[tool])).await.unwrap();
+        let tool = ToolSpec {
+            name: "t1".into(),
+            description: Some("d".into()),
+            schema: None,
+        };
+        let res = adapter
+            .invoke(&provider, "llama3.1:8b", "hello", Some(&[tool]))
+            .await
+            .unwrap();
         assert!(res.text.contains("hello"));
     }
-    
+
     #[tokio::test]
     async fn phi4_adapter_formats_correctly() {
         let adapter = Phi4MiniAdapter::new();
         let provider = DummyProvider;
-        
+
         // Test without tools
-        let res = adapter.invoke(&provider, "phi4-mini:3.8b", "hello", None).await.unwrap();
+        let res = adapter
+            .invoke(&provider, "phi4-mini:3.8b", "hello", None)
+            .await
+            .unwrap();
         assert!(res.text.contains("<|system|>"));
         assert!(res.text.contains("<|user|>"));
         assert!(res.text.contains("hello"));
-        
+
         // Test with tools
         let tool = ToolSpec::new("test_tool", "A test tool");
-        let res = adapter.invoke(&provider, "phi4-mini:3.8b", "use tool", Some(&[tool])).await.unwrap();
+        let res = adapter
+            .invoke(&provider, "phi4-mini:3.8b", "use tool", Some(&[tool]))
+            .await
+            .unwrap();
         assert!(res.text.contains("<|tool|>"));
         assert!(res.text.contains("test_tool"));
     }

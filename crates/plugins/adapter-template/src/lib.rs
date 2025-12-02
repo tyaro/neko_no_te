@@ -20,7 +20,9 @@ impl MyAdapter {
 
 #[async_trait]
 impl ModelAdapter for MyAdapter {
-    fn adapter_name(&self) -> &str { "my-adapter" }
+    fn adapter_name(&self) -> &str {
+        "my-adapter"
+    }
 
     fn supported_models(&self) -> Vec<String> {
         // Return model names this adapter supports, e.g. ["qwen3:8b".into()]
@@ -63,10 +65,21 @@ mod tests {
     struct DummyProvider;
     #[async_trait::async_trait]
     impl model_provider::ModelProvider for DummyProvider {
-        fn name(&self) -> &str { "dummy" }
-        async fn health(&self) -> Result<bool, model_provider::ProviderError> { Ok(true) }
-        async fn generate(&self, _model: &str, prompt: &str) -> Result<GenerateResult, model_provider::ProviderError> {
-            Ok(GenerateResult { text: format!("echo: {}", prompt), structured: None })
+        fn name(&self) -> &str {
+            "dummy"
+        }
+        async fn health(&self) -> Result<bool, model_provider::ProviderError> {
+            Ok(true)
+        }
+        async fn generate(
+            &self,
+            _model: &str,
+            prompt: &str,
+        ) -> Result<GenerateResult, model_provider::ProviderError> {
+            Ok(GenerateResult {
+                text: format!("echo: {}", prompt),
+                structured: None,
+            })
         }
     }
 

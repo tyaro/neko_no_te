@@ -1,15 +1,14 @@
-#[macro_use]
-extern crate ui_utils;
-
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod plugins;
-use plugins::{discover_plugins, disable_plugin, enable_plugin};
+use plugins::{disable_plugin, discover_plugins, enable_plugin};
+mod conversation_service;
 mod gui;
-mod message_handler;
+mod langchain_tools;
 mod mcp_client;
 mod mcp_manager;
+mod message_handler;
 // `run_gui` is called with full path `gui::run_gui()` below; importing the name is unused.
 
 /// Simple CLI for plugin management (foundation for GUI integration).
@@ -50,9 +49,12 @@ async fn test_mcp() -> anyhow::Result<()> {
     println!("Found {} MCP server(s)", configs.len());
 
     let manager = Arc::new(McpManager::new(configs));
-    
+
     println!("Initializing MCP servers...");
-    manager.initialize_all().await.map_err(|e| anyhow::anyhow!(e))?;
+    manager
+        .initialize_all()
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
     println!("✓ All servers initialized");
 
     println!("\nFetching available tools...");
@@ -60,12 +62,18 @@ async fn test_mcp() -> anyhow::Result<()> {
         eprintln!("Error fetching tools: {}", e);
         anyhow::anyhow!("Failed to fetch tools: {}", e)
     })?;
-    
+
     println!("✓ Found {} tool(s)", tools.len());
-    
+
     println!("\nAvailable tools:");
     for (i, (server_name, tool)) in tools.iter().enumerate() {
-        println!("{}. [{}] {} - {}", i + 1, server_name, tool.name, tool.description);
+        println!(
+            "{}. [{}] {} - {}",
+            i + 1,
+            server_name,
+            tool.name,
+            tool.description
+        );
     }
 
     println!("\n✓ MCP test completed successfully");
@@ -92,7 +100,11 @@ async fn main() -> anyhow::Result<()> {
                             .and_then(|m| m.name.clone())
                             .unwrap_or_else(|| p.dir_name.clone());
                         let desc = meta.and_then(|m| m.description.clone()).unwrap_or_default();
-                        println!("- {}  [{}]", title, if p.enabled { "enabled" } else { "disabled" });
+                        println!(
+                            "- {}  [{}]",
+                            title,
+                            if p.enabled { "enabled" } else { "disabled" }
+                        );
                         if !desc.is_empty() {
                             println!("    {}", desc);
                         }

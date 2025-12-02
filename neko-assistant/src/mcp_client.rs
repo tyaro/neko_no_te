@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
-use std::process::Stdio;
+use tokio::time::{timeout, Duration};
 
 /// MCP (Model Context Protocol) クライアント
 /// 外部MCPサーバーと通信してツールを呼び出す
@@ -46,14 +48,18 @@ pub struct McpTool {
 
 impl McpClient {
     /// 新しいMCPクライアントを作成し、サーバープロセスを起動
-    pub async fn new(server_command: &str, args: &[String], env: Option<HashMap<String, String>>) -> Result<Self, String> {
+    pub async fn new(
+        server_command: &str,
+        args: &[String],
+        env: Option<HashMap<String, String>>,
+    ) -> Result<Self, String> {
         let mut command = Command::new(server_command);
         command
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
-        
+
         // 環境変数を設定（指定がなければ親プロセスから継承）
         if let Some(custom_env) = env {
             command.env_clear();
@@ -66,15 +72,13 @@ impl McpClient {
                 command.env(key, value);
             }
         }
-        
+
         let mut child = command
             .spawn()
             .map_err(|e| format!("Failed to start MCP server: {}", e))?;
 
-        let stdin = child.stdin.take()
-            .ok_or("Failed to get stdin")?;
-        let stdout = child.stdout.take()
-            .ok_or("Failed to get stdout")?;
+        let stdin = child.stdin.take().ok_or("Failed to get stdin")?;
+        let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
 
         Ok(Self {
             server_process: Some(child),
@@ -122,9 +126,13 @@ impl McpClient {
         if let Some(stdin) = &mut self.stdin {
             let json = serde_json::to_string(&notification)
                 .map_err(|e| format!("Failed to serialize notification: {}", e))?;
-            stdin.write_all(format!("{}\n", json).as_bytes()).await
+            stdin
+                .write_all(format!("{}\n", json).as_bytes())
+                .await
                 .map_err(|e| format!("Failed to write notification: {}", e))?;
-            stdin.flush().await
+            stdin
+                .flush()
+                .await
                 .map_err(|e| format!("Failed to flush: {}", e))?;
         }
 
@@ -149,7 +157,8 @@ impl McpClient {
             return Err(format!("Error: {} - {}", error.code, error.message));
         }
 
-        let tools_value = response.result
+        let tools_value = response
+            .result
             .and_then(|r| r.get("tools").cloned())
             .ok_or("No tools in response")?;
 
@@ -162,7 +171,11 @@ impl McpClient {
     }
 
     /// ツールを呼び出す
-    pub async fn call_tool(&mut self, tool_name: &str, arguments: serde_json::Value) -> Result<serde_json::Value, String> {
+    pub async fn call_tool(
+        &mut self,
+        tool_name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: self.next_request_id(),
@@ -177,7 +190,10 @@ impl McpClient {
         let response = self.receive_response().await?;
 
         if let Some(error) = response.error {
-            return Err(format!("Tool call error: {} - {}", error.code, error.message));
+            return Err(format!(
+                "Tool call error: {} - {}",
+                error.code, error.message
+            ));
         }
 
         response.result.ok_or("No result in response".to_string())
@@ -188,9 +204,13 @@ impl McpClient {
         if let Some(stdin) = &mut self.stdin {
             let json = serde_json::to_string(request)
                 .map_err(|e| format!("Failed to serialize request: {}", e))?;
-            stdin.write_all(format!("{}\n", json).as_bytes()).await
+            stdin
+                .write_all(format!("{}\n", json).as_bytes())
+                .await
                 .map_err(|e| format!("Failed to write request: {}", e))?;
-            stdin.flush().await
+            stdin
+                .flush()
+                .await
                 .map_err(|e| format!("Failed to flush: {}", e))?;
             Ok(())
         } else {
@@ -200,17 +220,40 @@ impl McpClient {
 
     /// レスポンスを受信
     async fn receive_response(&mut self) -> Result<JsonRpcResponse, String> {
-        if let Some(stdout) = &mut self.stdout {
-            let mut line = String::new();
-            stdout.read_line(&mut line).await
-                .map_err(|e| format!("Failed to read response: {}", e))?;
-            
-            let response: JsonRpcResponse = serde_json::from_str(&line)
-                .map_err(|e| format!("Failed to parse response: {}", e))?;
-            
-            Ok(response)
-        } else {
-            Err("No stdout available".to_string())
+        let stdout = self
+            .stdout
+            .as_mut()
+            .ok_or("No stdout available".to_string())?;
+        let mut buffer = String::new();
+
+        loop {
+            buffer.clear();
+            let read_result = timeout(Duration::from_secs(10), stdout.read_line(&mut buffer))
+                .await
+                .map_err(|_| "Timed out waiting for MCP response".to_string())?;
+
+            match read_result {
+                Ok(0) => return Err("MCP server closed the connection".to_string()),
+                Ok(_) => {
+                    let trimmed = buffer.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    match serde_json::from_str::<JsonRpcResponse>(trimmed) {
+                        Ok(response) => return Ok(response),
+                        Err(err) => {
+                            eprintln!(
+                                "Failed to parse MCP response: {}. Raw payload: {}",
+                                err, trimmed
+                            );
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    return Err(format!("Failed to read response: {}", e));
+                }
+            }
         }
     }
 }
@@ -234,24 +277,39 @@ pub struct McpServerConfig {
 
 /// MCPサーバー設定を読み込む
 pub fn load_mcp_config() -> Result<Vec<McpServerConfig>, String> {
-    // 設定ファイルのパスを取得
-    let config_dir = dirs::config_dir()
-        .ok_or("Failed to get config directory")?;
-    let config_path = config_dir.join("neko-assistant").join("mcp_servers.json");
+    let config_path = ensure_mcp_config_path()?;
 
-    // 設定ファイルが存在しない場合はデフォルト設定を返す
     if !config_path.exists() {
         return Ok(get_default_mcp_config());
     }
 
-    // 設定ファイルを読み込む
     let content = std::fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read MCP config: {}", e))?;
 
-    let configs: Vec<McpServerConfig> = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse MCP config: {}", e))?;
+    let configs: Vec<McpServerConfig> =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse MCP config: {}", e))?;
 
     Ok(configs)
+}
+
+/// MCPサーバー設定を書き込む
+pub fn save_mcp_config(configs: &[McpServerConfig]) -> Result<(), String> {
+    let path = ensure_mcp_config_path()?;
+    let json = serde_json::to_string_pretty(configs)
+        .map_err(|e| format!("Failed to serialize MCP config: {}", e))?;
+    std::fs::write(&path, json).map_err(|e| format!("Failed to write MCP config: {}", e))?;
+    Ok(())
+}
+
+fn ensure_mcp_config_path() -> Result<PathBuf, String> {
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| format!("Failed to get current executable path: {}", e))?
+        .parent()
+        .map(|p| p.to_path_buf())
+        .ok_or("Executable has no parent directory")?;
+    std::fs::create_dir_all(&exe_dir)
+        .map_err(|e| format!("Failed to ensure executable directory exists: {}", e))?;
+    Ok(exe_dir.join("mcp_servers.json"))
 }
 
 /// デフォルトのMCP設定を返す
@@ -263,10 +321,13 @@ fn get_default_mcp_config() -> Vec<McpServerConfig> {
 }
 
 /// MCP設定ファイルのサンプルを生成
+#[allow(dead_code)]
 pub fn create_sample_config() -> Result<(), String> {
-    let config_dir = dirs::config_dir()
-        .ok_or("Failed to get config directory")?
-        .join("neko-assistant");
+    let config_path = ensure_mcp_config_path()?;
+    let config_dir = config_path
+        .parent()
+        .map(|p| p.to_path_buf())
+        .ok_or("Failed to determine MCP config directory")?;
 
     // ディレクトリを作成
     std::fs::create_dir_all(&config_dir)
@@ -294,9 +355,18 @@ pub fn create_sample_config() -> Result<(), String> {
             ],
             env: Some({
                 let mut env = std::collections::HashMap::new();
-                env.insert("GITHUB_PERSONAL_ACCESS_TOKEN".to_string(), "your_token_here".to_string());
+                env.insert(
+                    "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
+                    "your_token_here".to_string(),
+                );
                 env
             }),
+        },
+        McpServerConfig {
+            name: "weather".to_string(),
+            command: "target\\\\debug\\\\mcp-weather-server.exe".to_string(),
+            args: vec![],
+            env: None,
         },
     ];
 

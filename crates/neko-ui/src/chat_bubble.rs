@@ -26,7 +26,7 @@ impl ChatBubble {
             msg_type,
         }
     }
-    
+
     /// メッセージタイプに応じた背景色を取得
     fn background_color(&self) -> Rgba {
         match self.msg_type {
@@ -36,12 +36,12 @@ impl ChatBubble {
             MessageType::Error => rgb(0xef4444),     // 赤
         }
     }
-    
+
     /// メッセージタイプに応じたテキスト色を取得
     fn text_color(&self) -> Rgba {
         rgb(0xffffff) // 白
     }
-    
+
     /// レンダリング
     pub fn render(&self) -> impl IntoElement {
         div()
@@ -66,27 +66,27 @@ impl ChatBubbleBuilder {
             msg_type: MessageType::User,
         }
     }
-    
+
     pub fn user(mut self) -> Self {
         self.msg_type = MessageType::User;
         self
     }
-    
+
     pub fn assistant(mut self) -> Self {
         self.msg_type = MessageType::Assistant;
         self
     }
-    
+
     pub fn system(mut self) -> Self {
         self.msg_type = MessageType::System;
         self
     }
-    
+
     pub fn error(mut self) -> Self {
         self.msg_type = MessageType::Error;
         self
     }
-    
+
     pub fn build(self) -> ChatBubble {
         ChatBubble::new(self.content, self.msg_type)
     }

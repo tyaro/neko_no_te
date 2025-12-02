@@ -20,7 +20,7 @@ pub struct Message {
     pub role: MessageRole,
     pub content: String,
     pub timestamp: DateTime<Utc>,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
 }
@@ -36,7 +36,7 @@ impl Message {
             metadata: None,
         }
     }
-    
+
     /// メタデータ付きメッセージを作成
     pub fn with_metadata(
         role: MessageRole,

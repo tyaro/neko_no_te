@@ -10,6 +10,8 @@ members = [
     "crates/plugins/adapter-template",
     "crates/ui-utils",
     "crates/neko-ui",
+    "crates/prompt-spi",
+    "research/mcp-weather-server",
 ]
 
 resolver = "2"
@@ -18,3 +20,6 @@ resolver = "2"
 authors = ["tyaro"]
 edition = "2021"
 license = "MIT"
+
+[patch.crates-io]
+langchain-rust = { path = "vendor/langchain-rust" }

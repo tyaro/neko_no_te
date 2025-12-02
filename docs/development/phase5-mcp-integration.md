@@ -1,28 +1,23 @@
 # Phase 5: MCP統合 - 実装レポート
 
-## 概要
+### 優先度: 高
 
-Model Context Protocol (MCP) サーバーとの統合機能を実装しました。これにより、neko-assistantは外部ツール（ファイルシステム、GitHub、Webスクレイピングなど）をLLMが動的に呼び出せるようになります。
+1. **receive_responseのデバッグ**
+   - レスポンスをeprintln!で出力
+   - タイムアウト実装（`tokio::time::timeout(Duration::from_secs(10), ...)`）
+   - 行区切りではなくJSON区切りで読み込み
 
-## 実装内容
+2. ✅ **LangChainとの統合（2025-12-02）**
+   - MCP ツール→LangChain Tool ブリッジ、`LangChainToolAgent` を導入済み
+   - MessageHandler が MCP 有効時に Tool Agent を優先使用
 
-### 1. MCP Client (`mcp_client.rs`)
-
-**責務**: 単一のMCPサーバーとのJSON-RPC 2.0通信
-
-**主要機能**:
-- `McpClient::new()` - MCPサーバープロセスをtokio::process::Commandで起動
-- `initialize()` - MCPハンドシェイク（プロトコルバージョン`2024-11-05`）
-- `list_tools()` - 利用可能なツール一覧を取得
-- `call_tool()` - ツールを引数付きで実行
-- `Drop` trait - プロセス終了時の自動クリーンアップ
-
-**技術的特徴**:
-- 非同期stdin/stdout通信（AsyncBufReadExt/AsyncWriteExt）
-- JSON-RPC 2.0準拠（id, method, params, result/error）
-- 環境変数の明示的設定（Windowsの`npx.cmd`対応）
-- リクエストID自動インクリメント（Arc<Mutex<u64>>）
-
+3. ✅ **ツール呼び出しフロー**
+   ```
+   User: "Read file src/main.rs"
+   → LangChain Agent が MCP Tool を function-call として選択
+   → McpManager::call_tool("filesystem", "read_file", args)
+   → Result JSON をフォーマットしてチャットへ返信
+   ```
 **コード例**:
 ```rust
 let mut client = McpClient::new("npx.cmd", &["@modelcontextprotocol/server-filesystem".to_string()], None).await?;
@@ -54,7 +49,7 @@ let all_tools = manager.get_all_tools().await?;
 
 ### 3. 設定ファイル (`mcp_servers.json`)
 
-**場所**: `%AppData%\Roaming\neko-assistant\mcp_servers.json`
+**場所**: 実行バイナリと同じディレクトリ（例: `target/debug/mcp_servers.json`）
 
 **形式**:
 ```json
@@ -70,17 +65,16 @@ let all_tools = manager.get_all_tools().await?;
 
 **ロード関数**: `load_mcp_config()` - dirsクレートでクロスプラットフォーム対応
 
-### 4. MessageHandler統合
+### 4. LangChain Tool 統合（`langchain_tools/` + `langchain-bridge`）
 
-**変更内容**:
-- `MessageHandler`に`mcp_manager: Option<Arc<McpManager>>`フィールドを追加
-- コンストラクタで初期化（現在は`None`、後でGUIから設定可能に）
+**新規モジュール**:
+- `neko-assistant/src/langchain_tools/mcp.rs` — MCP ツールを LangChain の `Tool` トレイトへブリッジする `McpLangChainTool` を実装。`build_mcp_tools()` で `McpManager::get_all_tools()` の結果を `Arc<dyn Tool>` に変換。
+- `langchain-bridge/src/lib.rs` — `LangChainToolAgent` を追加。`ConversationalAgentBuilder` + `AgentExecutor` を内包し、`invoke()` で Tool 呼び出し付き会話を実行。
 
-**将来の実装予定**:
-1. システムプロンプトにツール説明を追加
-2. LLM応答からツール呼び出しをパース
-3. `McpManager::call_tool()`で実行
-4. 結果をLLMにフィードバック
+**MessageHandler 更新**:
+- `langchain_agent: Arc<tokio::sync::Mutex<Option<LangChainToolAgent>>>` を保持し、MCP 設定が存在する場合は起動時に非同期プリウォーム。
+- LangChain モードでは `ensure_tool_agent()` で MCP ツールを初期化し、利用可能なら Tool Agent を用いて応答生成。初期化失敗や MCP 未設定時は従来の `LangChainEngine::send_message_simple()` にフォールバック。
+- “Thinking…” メッセージ、結果永続化、UI 更新など既存フローは共通化。
 
 ### 5. テストコマンド
 
@@ -106,6 +100,12 @@ Available tools:
 ...
 ```
 
+### 2025-12-02 時点の実装まとめ
+
+- `neko-assistant/src/mcp_client.rs` に `ensure_mcp_config_path()` と `save_mcp_config()` を追加し、実行ファイルと同じディレクトリ（`cargo run` 時は `target/debug/`）に `mcp_servers.json` を常に生成・保存できるようにした。これにより GUI から設定を更新しても即座に永続化される。
+- GPUI 製の MCP 管理画面 `neko-assistant/src/gui/mcp_manager.rs` を新設。既存エントリの一覧表示、編集フォーム（name/command/args/env）、保存・削除、フォーム初期化をサポート。チャット画面ツールバーの「Manage MCP」ボタン（`neko-assistant/src/gui/chat/mod.rs`）からいつでも開ける。
+- プラグイン実行ガード `neko-assistant/src/plugins/guard.rs` を拡張し、`exec_with_output()` が `process_exec` capability を検証したうえで標準出力／標準エラーを収集して返すようにした。天気プラグインのようにコマンド出力をUIへ還元するシナリオでも再利用できる。
+
 ## 動作確認済み項目
 
 - ✅ MCPサーバーの起動（`npx.cmd` + filesystem server）
@@ -114,6 +114,30 @@ Available tools:
 - ✅ 複数サーバーの並行管理（McpManager）
 - ✅ 設定ファイルのロード（JSON形式）
 - ✅ Windows環境でのnpx実行（.cmd拡張子）
+- ✅ 模擬天気MCPサーバー (`research/mcp-weather-server`)
+
+### 模擬天気MCPサーバーの概要
+
+- `research/mcp-weather-server` に Rust 製の JSON-RPC サーバーを追加。`https://weather.tsukumijima.net/api/forecast/city/{city_code}` を呼び出し、`get_weather_forecast` ツールとして公開する。
+- Tool 入力: `city`（日本語／ローマ字）または `city_code`（6桁 JMA コード）。主要都市（東京・大阪・京都・横浜・札幌・名古屋・福岡・那覇）を内蔵テーブルで解決。
+- 応答: LangChain 用の `content` テキスト（人が読める要約）と、UI がそのまま表示できる詳細 JSON を返す。
+- キャッシュ: 同一都市コードのレスポンスを 5 分間メモリ保持し、API 呼び出しを抑制。
+- HTTP: `reqwest` + `rustls` を利用し、User-Agent を `neko-weather-mcp/0.1` で送信。
+
+#### 使い方
+
+1. `cargo build -p mcp-weather-server` でバイナリを生成（`target/debug/mcp-weather-server.exe`）。
+2. `target/debug/mcp_servers.json`（または配布バイナリと同じフォルダ）に以下のようなエントリを追加。
+    ```json
+    {
+       "name": "weather",
+       "command": "D:/develop/neko_no_te/target/debug/mcp-weather-server.exe",
+       "args": [],
+       "env": null
+    }
+    ```
+3. `cargo run -p neko-assistant -- test-mcp` を実行して `weather` サーバーが初期化され、`get_weather_forecast` が listed されることを確認。
+4. GUI で LangChain モードを有効にすると、会話から「東京の天気は？」のような質問で MCP ツールが選択され、返却 JSON がチャットに表示される。
 
 ## 既知の問題と対策
 

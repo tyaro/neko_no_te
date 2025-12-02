@@ -1,8 +1,8 @@
+use crate::plugins::PluginEntry;
 use gpui::*;
 use gpui_component::button::Button;
 use gpui_component::StyledExt;
 use std::path::{Path, PathBuf};
-use crate::plugins::PluginEntry;
 
 pub struct PluginListView {
     _repo_root: PathBuf,
@@ -13,12 +13,20 @@ pub struct PluginListView {
 impl PluginListView {
     pub fn new(repo_root: &Path, plugins: Vec<PluginEntry>) -> Self {
         let selected = if plugins.len() > 0 { Some(0) } else { None };
-        Self { _repo_root: repo_root.to_path_buf(), plugins, selected }
+        Self {
+            _repo_root: repo_root.to_path_buf(),
+            plugins,
+            selected,
+        }
     }
 }
 
 impl gpui::Render for PluginListView {
-    fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+    fn render(
+        &mut self,
+        _window: &mut gpui::Window,
+        cx: &mut gpui::Context<Self>,
+    ) -> impl IntoElement {
         // Init gpui-component helpers (safe to call each frame)
         gpui_component::init(cx);
 
@@ -44,8 +52,16 @@ impl gpui::Render for PluginListView {
 
         let detail_col = if let Some(idx) = self.selected {
             if let Some(entry) = self.plugins.get(idx) {
-                let name = entry.metadata.as_ref().and_then(|m| m.name.clone()).unwrap_or_else(|| entry.dir_name.clone());
-                let desc = entry.metadata.as_ref().and_then(|m| m.description.clone()).unwrap_or_default();
+                let name = entry
+                    .metadata
+                    .as_ref()
+                    .and_then(|m| m.name.clone())
+                    .unwrap_or_else(|| entry.dir_name.clone());
+                let desc = entry
+                    .metadata
+                    .as_ref()
+                    .and_then(|m| m.description.clone())
+                    .unwrap_or_default();
                 let name_ss = gpui::SharedString::from(name);
                 let desc_ss = gpui::SharedString::from(desc);
                 div()

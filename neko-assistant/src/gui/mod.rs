@@ -1,10 +1,11 @@
-pub mod console;
 pub mod chat;
-pub mod settings;
+pub mod console;
+pub mod mcp_manager;
 pub mod plugins;
+pub mod settings;
 
-pub use console::run_gui as run_gui_console;
 pub use chat::run_gui as run_gui_gpui;
+pub use console::run_gui as run_gui_console;
 pub use plugins::PluginListView;
 
 #[allow(dead_code)]

@@ -4,7 +4,7 @@
 //! IME入力、自動高さ調整、カスタムキーバインディングに対応。
 
 use gpui::*;
-use gpui_component::input::{InputState, InputEvent};
+use gpui_component::input::{InputEvent, InputState};
 
 /// チャット入力のキー設定
 #[derive(Clone, Debug, PartialEq)]
@@ -54,23 +54,27 @@ impl ChatInput {
         // InputEventを購読してEnterキーを処理
         let send_key_clone = send_key.clone();
         let input_clone = input_state.clone();
-        let subscription = cx.subscribe_in(&input_state, window, move |_view, _state, event: &InputEvent, window, cx| {
-            if let InputEvent::PressEnter { secondary } = event {
-                let should_send = match send_key_clone {
-                    SendKeyConfig::Enter => !secondary,        // Enterで送信、Shift+Enterで改行
-                    SendKeyConfig::CtrlEnter => *secondary,    // Ctrl+Enterで送信、Enterで改行
-                };
+        let subscription = cx.subscribe_in(
+            &input_state,
+            window,
+            move |_view, _state, event: &InputEvent, window, cx| {
+                if let InputEvent::PressEnter { secondary } = event {
+                    let should_send = match send_key_clone {
+                        SendKeyConfig::Enter => !secondary, // Enterで送信、Shift+Enterで改行
+                        SendKeyConfig::CtrlEnter => *secondary, // Ctrl+Enterで送信、Enterで改行
+                    };
 
-                if should_send {
-                    // テキストを取得
-                    let text = input_clone.read(cx).text().to_string();
-                    if !text.trim().is_empty() {
-                        // コールバックを呼び出し（クリアは呼び出し側で行う）
-                        on_send(&text, window, cx);
+                    if should_send {
+                        // テキストを取得
+                        let text = input_clone.read(cx).text().to_string();
+                        if !text.trim().is_empty() {
+                            // コールバックを呼び出し（クリアは呼び出し側で行う）
+                            on_send(&text, window, cx);
+                        }
                     }
                 }
-            }
-        });
+            },
+        );
 
         Self {
             input_state,

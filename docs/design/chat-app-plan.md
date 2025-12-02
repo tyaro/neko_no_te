@@ -18,7 +18,7 @@
 - **設定管理**: `app-config` クレートで Ollama URL、モデル名管理
   - ✅ 設定画面（Settings）実装済み
   - ✅ LangChain ON/OFF 切り替え可能
-  - ✅ TOML ファイル保存（`~/.config/neko-assistant/config.toml`）
+    - ✅ SQLite 保存（実行ファイルと同階層 `neko_assistant_settings.db`）
 
 ### 🔄 改善が必要な部分
 - **非同期処理**: LLM呼び出しが同期実行でUIがフリーズする

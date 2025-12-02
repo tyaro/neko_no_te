@@ -4,7 +4,7 @@
 - **主要境界**: `model-provider` が HTTP/認証、`model-adapter` が function-calling 整形、`langchain-bridge`/`chat-engine` がチェーン制御、`chat-history` が永続化、`ui-utils`+`neko-ui` が再利用 UI。
 - **会話フロー**: `MessageHandler` を唯一の UI↔LLM 窓口に保ち、Phase 5 の `ChatEvent` 方針（UserMessageReceived→ToolCallRequested→ToolResultReceived）を崩さない。UI から tokio::spawn を直接呼ばない。
 - **LangChain 統合**: `langchain-bridge` がプロンプト構築をカプセル化。ツール記述は `McpManager::get_tools_description()` で取得し、システムプロンプトへ注入する想定。
-- **MCP 統合**: `mcp_client.rs` が 1 サーバー JSON-RPC を担当し、`mcp_manager.rs` が `Arc<Mutex<HashMap<String, McpClient>>>` で複数管理。設定は `%AppData%\Roaming\neko-assistant\mcp_servers.json` を `load_mcp_config()` で読む。
+- **MCP 統合**: `mcp_client.rs` が 1 サーバー JSON-RPC を担当し、`mcp_manager.rs` が `Arc<Mutex<HashMap<String, McpClient>>>` で複数管理。設定は 実行ファイルと同じディレクトリ（`cargo run` 時は `target/debug/mcp_servers.json`）を `load_mcp_config()` で読む。
 - **検証コマンド**: `cargo run -p neko-assistant -- test-mcp` で initialize/list_tools/call_tool を一括確認。新サーバーを追加したらまずここで動作検証。
 - **既知課題**: `McpClient::receive_response` が `BufReader::read_line` 依存でハングする。パッチでは `tokio::time::timeout(Duration::from_secs(10))` と JSON フレーミング、詳細 `eprintln!` を必ず入れる。
 - **プラグイン開発**: `crates/plugins/adapter-template/` をコピー→`Cargo.toml`/`plugin.toml` を更新→`ModelAdapter::{supported_models, invoke}` を実装→`cargo test -p <plugin>`→`pwsh .\scripts\sync-plugins.ps1 -Configuration Debug` で `target/<config>/plugins/` に配置。

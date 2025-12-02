@@ -28,19 +28,19 @@ impl TextInputState {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// テキストを取得
     pub fn text(&self) -> &str {
         &self.text
     }
-    
+
     /// テキストをクリア
     pub fn clear(&mut self) {
         self.text.clear();
         self.selected_range = 0..0;
         self.marked_range = None;
     }
-    
+
     /// 指定範囲のテキストを取得
     pub fn text_for_range(&self, range: Range<usize>) -> Option<String> {
         let chars: Vec<char> = self.text.chars().collect();
@@ -50,21 +50,21 @@ impl TextInputState {
             None
         }
     }
-    
+
     /// テキストを置換
     pub fn replace_text_in_range(&mut self, range: Option<Range<usize>>, new_text: &str) {
         let chars: Vec<char> = self.text.chars().collect();
         let replace_range = range.unwrap_or_else(|| self.selected_range.clone());
-        
+
         let before: String = chars[..replace_range.start].iter().collect();
         let after: String = chars[replace_range.end..].iter().collect();
         self.text = format!("{}{}{}", before, new_text, after);
-        
+
         let new_cursor = replace_range.start + new_text.chars().count();
         self.selected_range = new_cursor..new_cursor;
         self.marked_range = None;
     }
-    
+
     /// テキストを置換してマーク（IME用）
     pub fn replace_and_mark_text_in_range(
         &mut self,
@@ -74,26 +74,28 @@ impl TextInputState {
     ) {
         let chars: Vec<char> = self.text.chars().collect();
         let replace_range = range.unwrap_or_else(|| {
-            self.marked_range.clone().unwrap_or_else(|| self.selected_range.clone())
+            self.marked_range
+                .clone()
+                .unwrap_or_else(|| self.selected_range.clone())
         });
-        
+
         let before: String = chars[..replace_range.start].iter().collect();
         let after: String = chars[replace_range.end..].iter().collect();
         self.text = format!("{}{}{}", before, new_text, after);
-        
+
         let new_len = new_text.chars().count();
         let marked_start = replace_range.start;
         let marked_end = marked_start + new_len;
-        
+
         self.marked_range = Some(marked_start..marked_end);
-        
+
         if let Some(sel_range) = new_selected_range {
             self.selected_range = (marked_start + sel_range.start)..(marked_start + sel_range.end);
         } else {
             self.selected_range = marked_end..marked_end;
         }
     }
-    
+
     /// マークを解除（IME確定）
     pub fn unmark_text(&mut self) {
         self.marked_range = None;
@@ -104,7 +106,7 @@ impl TextInputState {
 pub trait TextInputHandler {
     /// TextInputStateへの参照を取得
     fn text_input_state(&self) -> &TextInputState;
-    
+
     /// TextInputStateへの可変参照を取得
     fn text_input_state_mut(&mut self) -> &mut TextInputState;
 }
@@ -127,8 +129,14 @@ macro_rules! impl_entity_input_handler {
                 })
             }
 
-            fn marked_text_range(&self, _window: &mut gpui::Window, _cx: &mut gpui::Context<Self>) -> Option<std::ops::Range<usize>> {
-                $crate::TextInputHandler::text_input_state(self).marked_range.clone()
+            fn marked_text_range(
+                &self,
+                _window: &mut gpui::Window,
+                _cx: &mut gpui::Context<Self>,
+            ) -> Option<std::ops::Range<usize>> {
+                $crate::TextInputHandler::text_input_state(self)
+                    .marked_range
+                    .clone()
             }
 
             fn text_for_range(
@@ -148,7 +156,8 @@ macro_rules! impl_entity_input_handler {
                 _window: &mut gpui::Window,
                 cx: &mut gpui::Context<Self>,
             ) {
-                $crate::TextInputHandler::text_input_state_mut(self).replace_text_in_range(replacement_range, text);
+                $crate::TextInputHandler::text_input_state_mut(self)
+                    .replace_text_in_range(replacement_range, text);
                 cx.notify();
             }
 
@@ -160,11 +169,8 @@ macro_rules! impl_entity_input_handler {
                 _window: &mut gpui::Window,
                 cx: &mut gpui::Context<Self>,
             ) {
-                $crate::TextInputHandler::text_input_state_mut(self).replace_and_mark_text_in_range(
-                    range_utf16,
-                    new_text,
-                    new_selected_range,
-                );
+                $crate::TextInputHandler::text_input_state_mut(self)
+                    .replace_and_mark_text_in_range(range_utf16, new_text, new_selected_range);
                 cx.notify();
             }
 

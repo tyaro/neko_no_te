@@ -50,9 +50,12 @@ pub mod ollama_impl {
     impl OllamaProvider {
         pub fn new(base_url: &str) -> Result<Self, url::ParseError> {
             let client = OllamaClient::new(base_url)?;
-            Ok(Self { client, name: "ollama".to_string() })
+            Ok(Self {
+                client,
+                name: "ollama".to_string(),
+            })
         }
-        
+
         /// ストリーミングで生成（コールバックで部分応答を受け取る）
         pub async fn generate_stream<F>(
             &self,
@@ -63,16 +66,17 @@ pub mod ollama_impl {
         where
             F: FnMut(&str),
         {
-            let text = self.client
+            let text = self
+                .client
                 .generate_stream(model, prompt, callback)
                 .await
                 .map_err(|e| ProviderError::Http(e.to_string()))?;
-            
+
             let structured = match serde_json::from_str::<serde_json::Value>(&text) {
                 Ok(v) => Some(v),
                 Err(_) => None,
             };
-            
+
             Ok(GenerateResult { text, structured })
         }
     }
@@ -84,11 +88,22 @@ pub mod ollama_impl {
         }
 
         async fn health(&self) -> Result<bool, ProviderError> {
-            self.client.health().await.map_err(|e| ProviderError::Http(e.to_string()))
+            self.client
+                .health()
+                .await
+                .map_err(|e| ProviderError::Http(e.to_string()))
         }
 
-        async fn generate(&self, model: &str, prompt: &str) -> Result<GenerateResult, ProviderError> {
-            let text = self.client.generate(model, prompt).await.map_err(|e| ProviderError::Http(e.to_string()))?;
+        async fn generate(
+            &self,
+            model: &str,
+            prompt: &str,
+        ) -> Result<GenerateResult, ProviderError> {
+            let text = self
+                .client
+                .generate(model, prompt)
+                .await
+                .map_err(|e| ProviderError::Http(e.to_string()))?;
             // Try to parse structured JSON if possible, otherwise leave None.
             let structured = match serde_json::from_str::<serde_json::Value>(&text) {
                 Ok(v) => Some(v),

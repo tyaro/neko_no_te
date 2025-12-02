@@ -24,49 +24,49 @@ impl ChatSession {
             messages: Vec::new(),
         }
     }
-    
+
     pub fn with_title(mut self, title: String) -> Self {
         self.title = Some(title);
         self
     }
-    
+
     pub fn add_message(&mut self, message: Message) {
         self.messages.push(message);
         self.updated_at = chrono::Utc::now();
     }
-    
+
     /// セッションをJSONファイルに保存
     pub fn save_to_file(&self, path: &Path) -> Result<(), ChatError> {
         // 親ディレクトリを作成
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        
+
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)?;
-        
+
         Ok(())
     }
-    
+
     /// JSONファイルからセッションを読み込み
     pub fn load_from_file(path: &Path) -> Result<Self, ChatError> {
         let json = fs::read_to_string(path)?;
         let session: ChatSession = serde_json::from_str(&json)?;
         Ok(session)
     }
-    
+
     /// セッションディレクトリ内のすべてのセッションを一覧取得
     pub fn list_sessions(session_dir: &Path) -> Result<Vec<SessionInfo>, ChatError> {
         if !session_dir.exists() {
             return Ok(Vec::new());
         }
-        
+
         let mut sessions = Vec::new();
-        
+
         for entry in fs::read_dir(session_dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 // ファイルを読み込んでメタデータを取得
                 if let Ok(session) = Self::load_from_file(&path) {
@@ -81,10 +81,10 @@ impl ChatSession {
                 }
             }
         }
-        
+
         // 更新日時でソート（新しい順）
         sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-        
+
         Ok(sessions)
     }
 }

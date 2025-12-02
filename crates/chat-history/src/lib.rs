@@ -14,16 +14,16 @@ pub use message::{Message, MessageRole};
 pub enum HistoryError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(String),
-    
+
     #[error("Deserialization error: {0}")]
     Deserialization(String),
-    
+
     #[error("Conversation not found: {0}")]
     NotFound(String),
-    
+
     #[error("Invalid conversation data: {0}")]
     InvalidData(String),
 }

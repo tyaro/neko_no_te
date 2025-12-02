@@ -33,15 +33,15 @@ GUIのメニューから Settings を開きます。
 
 ## 実装詳細
 
-### 設定ファイル
+### 設定データベース
 
-設定は `~/.config/neko-assistant/config.toml` に保存されます：
+設定はアプリ実行ファイルと同じディレクトリにある `neko_assistant_settings.db`（SQLite）へ保存されます。
+旧 `config.toml` が存在する場合は初回起動時に読み込み・移行されます。
 
-```toml
-ollama_base_url = "http://localhost:11434/"
-default_model = "phi4-mini:3.8b"
-max_history_messages = 100
-use_langchain = false  # または true
+内容を確認する場合は、`sqlite3` などで以下を実行してください（Windows の例）。
+
+```powershell
+sqlite3.exe .\target\debug\neko_assistant_settings.db "SELECT * FROM app_config;"
 ```
 
 ### アーキテクチャ
@@ -96,9 +96,9 @@ use_langchain = false  # または true
    ollama list
    ```
 
-2. 設定ファイルを確認:
+2. 設定データベースを確認:
    ```powershell
-   cat ~/.config/neko-assistant/config.toml
+   sqlite3.exe .\target\debug\neko_assistant_settings.db "SELECT use_langchain FROM app_config;"
    ```
 
 3. ログを確認:
@@ -106,7 +106,4 @@ use_langchain = false  # または true
 
 ### 設定が保存されない
 
-設定ディレクトリの書き込み権限を確認してください：
-```powershell
-ls ~/.config/neko-assistant/
-```
+`neko_assistant_settings.db` を配置しているディレクトリ（例: `target\debug`）に書き込み権限があるか確認してください。

@@ -1,8 +1,8 @@
 //! 会話型定義
 
+use crate::message::Message;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use crate::message::Message;
 
 /// 会話
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,18 +26,18 @@ impl Conversation {
             messages: Vec::new(),
         }
     }
-    
+
     /// メッセージを追加
     pub fn add_message(&mut self, message: Message) {
         self.messages.push(message);
         self.updated_at = Utc::now();
     }
-    
+
     /// 最新のメッセージを取得
     pub fn last_message(&self) -> Option<&Message> {
         self.messages.last()
     }
-    
+
     /// メタデータに変換（一覧表示用）
     pub fn to_metadata(&self) -> ConversationMetadata {
         ConversationMetadata {

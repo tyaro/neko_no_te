@@ -20,10 +20,12 @@ chat-engine = { path = "../crates/chat-engine" }
 chat-history = { path = "../crates/chat-history" }
 app-config = { path = "../crates/app-config" }
 langchain-bridge = { path = "../crates/langchain-bridge" }
+langchain-rust = { version = "4.6.0", features = ["ollama"] }
 model-adapter = { path = "../crates/model-adapter" }
 model-provider = { path = "../crates/model-provider", features = ["ollama-impl"] }
 ui-utils = { path = "../crates/ui-utils" }
 neko-ui = { path = "../crates/neko-ui" }
+async-trait = "0.1.83"
 
 
 

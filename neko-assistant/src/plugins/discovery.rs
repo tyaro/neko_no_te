@@ -1,5 +1,5 @@
-use crate::plugins::metadata::PluginEntry;
 use crate::plugins::enabled::load_enabled_list;
+use crate::plugins::metadata::PluginEntry;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -39,7 +39,11 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
         let ent = entry?;
         let path = ent.path();
         if path.is_dir() {
-            let dir_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+            let dir_name = path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
             let enabled = enabled_list.contains(&dir_name);
 
             // Attempt to read and validate plugin.toml
@@ -48,7 +52,10 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
                 match crate::plugins::validation::validate_manifest(&plugin_toml) {
                     Ok((m, _caps)) => Some(m),
                     Err(err) => {
-                        eprintln!("warning: invalid plugin manifest {:?}: {}", plugin_toml, err);
+                        eprintln!(
+                            "warning: invalid plugin manifest {:?}: {}",
+                            plugin_toml, err
+                        );
                         None
                     }
                 }
@@ -56,7 +63,12 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
                 None
             };
 
-            entries.push(PluginEntry { dir_name, path, enabled, metadata });
+            entries.push(PluginEntry {
+                dir_name,
+                path,
+                enabled,
+                metadata,
+            });
         }
     }
 

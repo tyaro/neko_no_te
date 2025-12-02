@@ -42,8 +42,22 @@ impl McpManager {
         Ok(())
     }
 
+    async fn ensure_initialized(&self) -> Result<(), String> {
+        let needs_init = {
+            let clients = self.clients.lock().await;
+            clients.is_empty()
+        };
+
+        if needs_init {
+            self.initialize_all().await?;
+        }
+
+        Ok(())
+    }
+
     /// すべてのMCPサーバーからツール一覧を取得
     pub async fn get_all_tools(&self) -> Result<Vec<(String, McpTool)>, String> {
+        self.ensure_initialized().await?;
         let mut clients = self.clients.lock().await;
         let mut all_tools = Vec::new();
 
@@ -70,6 +84,7 @@ impl McpManager {
         tool_name: &str,
         arguments: serde_json::Value,
     ) -> Result<serde_json::Value, String> {
+        self.ensure_initialized().await?;
         let mut clients = self.clients.lock().await;
 
         let client = clients
@@ -80,7 +95,9 @@ impl McpManager {
     }
 
     /// ツール名からサーバー名を検索
+    #[allow(dead_code)]
     pub async fn find_server_for_tool(&self, tool_name: &str) -> Result<String, String> {
+        self.ensure_initialized().await?;
         let mut clients = self.clients.lock().await;
 
         for (server_name, client) in clients.iter_mut() {
@@ -100,6 +117,7 @@ impl McpManager {
     }
 
     /// LangChain用のツール説明を生成
+    #[allow(dead_code)]
     pub async fn get_tools_description(&self) -> String {
         let tools = match self.get_all_tools().await {
             Ok(t) => t,

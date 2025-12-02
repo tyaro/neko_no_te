@@ -8,6 +8,7 @@ neko_no_te は Rust で書かれた AI アシスタント（GUI）プロジェ�
 - 🔌 **プラグインシステム**: 動的なツールプラグインのロード
 - ⚙️ **設定管理**: GUI での柔軟な設定変更
 - 🧪 **LangChain 統合**: 実験的な LangChain-rust サポート（設定で切り替え可能）
+- 🛰️ **MCP サーバー管理**: GUI から Model Context Protocol サーバーを登録・編集
 
 ## 主要コンポーネント
 
@@ -32,6 +33,17 @@ cargo test -p neko-assistant
 cargo fmt --all
 cargo clippy --all-targets -- -D warnings
 ```
+
+## MCP サーバー管理 (GUI)
+
+`neko-assistant` のチャット画面ツールバーに「Manage MCP」ボタンを追加しました。これにより以下の操作を GUI 上で実行できます。
+
+1. **一覧表示**: 現在登録されている MCP サーバーが名前・起動コマンドとともに表示されます。
+2. **編集/削除**: 各行の `Edit` ボタンでフォームへロードし、`Remove` で即削除できます。
+3. **追加/保存**: フォーム内で `Server Name / Command / Arguments / Env` を入力し、`Save Entry` を押すと `neko-assistant.exe`（または `cargo run` 時は `target/debug/`）と同じディレクトリにある `mcp_servers.json` に永続化されます。
+4. **環境変数**: `Env` フィールドは `KEY=value` を改行区切りで入力する形式です。空欄の場合は `null` として保存されます。
+
+> スクリーンショットは現在準備中です。必要であれば `cargo run -p neko-assistant` を実行して UI を直接確認してください。
 
 開発ルール（要点）
 

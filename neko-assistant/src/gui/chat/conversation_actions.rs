@@ -1,24 +1,17 @@
+use crate::conversation_service::ConversationService;
+use chat_history::{Conversation, Message, MessageRole};
 use gpui::*;
-use std::sync::{Arc, Mutex};
-use chat_history::{Conversation, Message, MessageRole, ConversationManager};
 use gpui_component::input::InputState;
 use ui_utils::ScrollManager;
 
 /// 会話管理に関する操作
 pub struct ConversationActions {
-    pub conversation: Arc<Mutex<Conversation>>,
-    pub conversation_manager: Arc<Mutex<ConversationManager>>,
+    pub service: ConversationService,
 }
 
 impl ConversationActions {
-    pub fn new(
-        conversation: Arc<Mutex<Conversation>>,
-        conversation_manager: Arc<Mutex<ConversationManager>>,
-    ) -> Self {
-        Self {
-            conversation,
-            conversation_manager,
-        }
+    pub fn new(service: ConversationService) -> Self {
+        Self { service }
     }
 
     /// 新規会話を作成して切り替え
@@ -36,27 +29,21 @@ impl ConversationActions {
         // 新しい会話を作成
         let mut new_conversation = Conversation::new("New Chat");
         let welcome_msg = if use_langchain {
-            Message::new(MessageRole::System, "Welcome to Neko Assistant (LangChain mode enabled)".to_string())
+            Message::new(
+                MessageRole::System,
+                "Welcome to Neko Assistant (LangChain mode enabled)".to_string(),
+            )
         } else {
             Message::new(MessageRole::System, "Welcome to Neko Assistant".to_string())
         };
         new_conversation.add_message(welcome_msg);
 
-        // 保存
-        if let Ok(manager) = self.conversation_manager.lock() {
-            manager.save(&new_conversation)
-                .map_err(|e| format!("Failed to save conversation: {}", e))?;
-        }
-
-        // 会話を切り替え
-        if let Ok(mut conv) = self.conversation.lock() {
-            *conv = new_conversation;
-        }
+        self.service
+            .replace_conversation(new_conversation)
+            .map_err(|e| format!("Failed to save conversation: {}", e))?;
 
         // 入力フィールドをクリア
-        let _ = input_state.update(cx, |view, cx| {
-            view.set_value("", window, cx)
-        });
+        let _ = input_state.update(cx, |view, cx| view.set_value("", window, cx));
 
         // スクロールをリセット
         scroll_manager.mark_scroll_to_bottom();
@@ -73,64 +60,45 @@ impl ConversationActions {
         window: &mut Window,
         cx: &mut Context<impl Render>,
     ) -> Result<(), String> {
-        // 現在の会話を保存
-        if let Ok(current_conv) = self.conversation.lock() {
-            if let Ok(manager) = self.conversation_manager.lock() {
-                manager.save(&current_conv)
-                    .map_err(|e| format!("Failed to save current conversation: {}", e))?;
-            }
-        }
+        self.service
+            .save_current()
+            .map_err(|e| format!("Failed to save current conversation: {}", e))?;
 
-        // 新しい会話をロード
-        if let Ok(manager) = self.conversation_manager.lock() {
-            let loaded_conv = manager.load(conversation_id)
-                .map_err(|e| format!("Failed to load conversation: {}", e))?;
-            
-            if let Ok(mut conv) = self.conversation.lock() {
-                *conv = loaded_conv;
-            }
+        self.service
+            .load_conversation(conversation_id)
+            .map_err(|e| format!("Failed to load conversation: {}", e))?;
 
-            // 入力フィールドをクリア
-            let _ = input_state.update(cx, |view, cx| {
-                view.set_value("", window, cx)
-            });
+        // 入力フィールドをクリア
+        let _ = input_state.update(cx, |view, cx| view.set_value("", window, cx));
 
-            // スクロールをリセット
-            scroll_manager.mark_scroll_to_bottom();
+        // スクロールをリセット
+        scroll_manager.mark_scroll_to_bottom();
 
-            Ok(())
-        } else {
-            Err("Failed to lock conversation manager".to_string())
-        }
+        Ok(())
     }
 
     /// 指定IDの会話を削除
-    pub fn delete_conversation(
-        &self,
-        conversation_id: &str,
-        current_conversation_id: &str,
-    ) -> Result<bool, String> {
+    pub fn delete_conversation(&self, conversation_id: &str) -> Result<bool, String> {
         // 現在の会話を削除しようとしている場合はエラー
-        if conversation_id == current_conversation_id {
+        if self
+            .service
+            .current_conversation_id()
+            .map(|cur| cur == conversation_id)
+            .unwrap_or(false)
+        {
             return Err("Cannot delete the currently active conversation".to_string());
         }
 
-        if let Ok(manager) = self.conversation_manager.lock() {
-            manager.delete(conversation_id)
-                .map_err(|e| format!("Failed to delete conversation: {}", e))?;
-            Ok(true)
-        } else {
-            Err("Failed to lock conversation manager".to_string())
-        }
+        self.service
+            .delete_conversation(conversation_id)
+            .map_err(|e| format!("Failed to delete conversation: {}", e))?;
+        Ok(true)
     }
 
     /// 会話リストを取得
     pub fn list_conversations(&self) -> Result<Vec<chat_history::ConversationMetadata>, String> {
-        if let Ok(manager) = self.conversation_manager.lock() {
-            manager.list_metadata()
-                .map_err(|e| format!("Failed to list conversations: {}", e))
-        } else {
-            Err("Failed to lock conversation manager".to_string())
-        }
+        self.service
+            .list_conversations()
+            .map_err(|e| format!("Failed to list conversations: {}", e))
     }
 }

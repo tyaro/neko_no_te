@@ -54,7 +54,7 @@ CI とドキュメント
 
 - ✅ **mcp_client.rs** (308行): JSON-RPC 2.0通信、tokio非同期プロセス管理
 - ✅ **mcp_manager.rs** (127行): 複数MCPサーバー統合管理
-- ✅ **設定システム**: `%AppData%\Roaming\neko-assistant\mcp_servers.json`
+- ✅ **設定システム**: 実行ファイルと同じディレクトリの `mcp_servers.json`
 - ✅ **テストコマンド**: `cargo run -- test-mcp`
 - ✅ Windows環境対応（npx.cmd）
 

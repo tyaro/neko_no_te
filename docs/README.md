@@ -20,6 +20,10 @@ neko_no_te は、AIアシスタント機能を提供するRustベースのプロ
 - `docs/`: プロジェクトのドキュメントが格納されているディレクトリ
 - `tech_demo/`: 技術的検証用のコードが格納されているディレクトリ
 
+### MCP サーバー管理 UI
+
+`neko-assistant` のチャットウィンドウには「Manage MCP」ボタンがあり、Model Context Protocol サーバーの登録・編集・削除をすべて GUI 上で行えます。フォームに入力した内容は実行バイナリと同じディレクトリ（`cargo run` 時は `target/debug/mcp_servers.json`）に即座に保存されるため、JSON を直接編集する必要はありません。スクリーンショットは現在準備中ですが、`cargo run -p neko-assistant` で簡単に確認できます。
+
 ### docsフォルダ構成
 
 詳細なドキュメントは角クレート毎に `docs/` ディレクトリを作成し、そこに配置します。

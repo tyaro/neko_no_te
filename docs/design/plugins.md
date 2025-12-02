@@ -16,8 +16,12 @@ Location: docs/design/plugins.md
 
 必須事項
 
-- プラグインは `model-adapter::ModelAdapter` トレイトを実装すること。
+- 「adapter」種別のプラグインは `model-adapter::ModelAdapter` トレイトを実装すること。
 - `supported_models()` で対応するモデル名（例: `"qwen3:8b"`）を返すこと。
+
+> **Prompt Builder との棲み分け**
+>
+> function-calling の書式を差し替える等、プロンプト構築自体を拡張したい場合は新設予定の Prompt Builder SPI（`docs/design/prompt-builder-spi.md`）を利用する。Adapter プラグインは Provider とのやり取り（モデル固有の HTTP パラメータ変換など）に特化させる。
 
 簡単な作成手順
 
