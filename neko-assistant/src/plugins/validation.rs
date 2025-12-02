@@ -1,4 +1,4 @@
-use crate::plugins::metadata::PluginMetadata;
+use crate::plugins::metadata::{PluginKind, PluginMetadata};
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::fs;
@@ -29,11 +29,50 @@ pub fn extract_metadata(value: &toml::Value) -> PluginMetadata {
         .get("author")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
+    let kind = value
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .map(|s| match s {
+            "prompt_builder" => PluginKind::PromptBuilder,
+            "adapter" | _ => PluginKind::Adapter,
+        })
+        .unwrap_or_default();
+
+    let entrypoint = value
+        .get("entrypoint")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let library = value
+        .get("library")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let models = value
+        .get("models")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let priority = value
+        .get("priority")
+        .and_then(|v| v.as_integer())
+        .map(|v| v as i32);
+
     PluginMetadata {
         name,
         description,
         version,
         author,
+        kind,
+        entrypoint,
+        library,
+        models,
+        priority,
     }
 }
 
@@ -64,6 +103,24 @@ pub fn validate_manifest(path: &Path) -> Result<(PluginMetadata, HashSet<String>
     }
 
     let metadata = extract_metadata(&v);
+
+    if matches!(metadata.kind, PluginKind::PromptBuilder) {
+        if metadata
+            .entrypoint
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .is_empty()
+        {
+            anyhow::bail!("prompt_builder requires non-empty 'entrypoint'");
+        }
+        if metadata.library.as_deref().unwrap_or("").trim().is_empty() {
+            anyhow::bail!("prompt_builder requires non-empty 'library'");
+        }
+        if metadata.models.is_empty() {
+            anyhow::bail!("prompt_builder requires at least one model in 'models'");
+        }
+    }
     let caps = extract_capabilities(&v);
     Ok((metadata, caps))
 }

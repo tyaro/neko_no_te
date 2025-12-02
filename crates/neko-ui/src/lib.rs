@@ -7,6 +7,8 @@
 
 pub mod chat_bubble;
 pub mod chat_input;
+pub mod model_selector;
 
 pub use chat_bubble::{ChatBubble, MessageType};
 pub use chat_input::{ChatInput, SendKeyConfig};
+pub use model_selector::{model_selector, ModelPreset};

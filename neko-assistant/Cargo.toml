@@ -25,7 +25,10 @@ model-adapter = { path = "../crates/model-adapter" }
 model-provider = { path = "../crates/model-provider", features = ["ollama-impl"] }
 ui-utils = { path = "../crates/ui-utils" }
 neko-ui = { path = "../crates/neko-ui" }
+ollama-client = { path = "../crates/ollama-client" }
 async-trait = "0.1.83"
+prompt-spi = { path = "../crates/prompt-spi" }
+libloading = "0.8"
 
 
 

@@ -224,29 +224,39 @@ impl McpClient {
             .stdout
             .as_mut()
             .ok_or("No stdout available".to_string())?;
-        let mut buffer = String::new();
+        let mut line = String::new();
+        let mut frame = String::new();
 
         loop {
-            buffer.clear();
-            let read_result = timeout(Duration::from_secs(10), stdout.read_line(&mut buffer))
+            line.clear();
+            let read_result = timeout(Duration::from_secs(10), stdout.read_line(&mut line))
                 .await
                 .map_err(|_| "Timed out waiting for MCP response".to_string())?;
 
             match read_result {
                 Ok(0) => return Err("MCP server closed the connection".to_string()),
                 Ok(_) => {
-                    let trimmed = buffer.trim();
-                    if trimmed.is_empty() {
+                    if line.trim().is_empty() {
                         continue;
                     }
+                    frame.push_str(&line);
+                    let trimmed = frame.trim();
                     match serde_json::from_str::<JsonRpcResponse>(trimmed) {
-                        Ok(response) => return Ok(response),
+                        Ok(response) => {
+                            eprintln!("DEBUG: MCP raw frame: {}", trimmed);
+                            frame.clear();
+                            return Ok(response);
+                        }
                         Err(err) => {
+                            if err.is_eof() {
+                                // 不完全なフレーム。追加行を待つ。
+                                continue;
+                            }
                             eprintln!(
-                                "Failed to parse MCP response: {}. Raw payload: {}",
+                                "Failed to parse MCP response fragment: {}. Current frame: {}",
                                 err, trimmed
                             );
-                            continue;
+                            frame.clear();
                         }
                     }
                 }

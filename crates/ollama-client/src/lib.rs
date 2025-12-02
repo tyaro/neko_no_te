@@ -119,6 +119,17 @@ impl OllamaClient {
 
         Ok(full_response)
     }
+
+    /// Retrieve the list of locally available models via `<base>/api/tags`.
+    pub async fn list_models(&self) -> Result<Vec<OllamaListedModel>, reqwest::Error> {
+        let mut url = self.base.clone();
+        url.set_path(&format!("{}/api/tags", url.path().trim_end_matches('/')));
+
+        let res = self.client.get(url).send().await?;
+        let res = res.error_for_status()?;
+        let payload: OllamaTagsResponse = res.json().await?;
+        Ok(payload.models)
+    }
 }
 
 // Small helper types for callers who want to deserialize standard responses.
@@ -126,6 +137,38 @@ impl OllamaClient {
 pub struct GenerateResponse {
     // Keep this generic; actual shape depends on Ollama version and config.
     pub output: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OllamaListedModel {
+    pub name: String,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
+    pub size: Option<u64>,
+    #[serde(default)]
+    pub digest: Option<String>,
+    #[serde(default)]
+    pub modified_at: Option<String>,
+    #[serde(default)]
+    pub details: Option<OllamaModelDetails>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OllamaModelDetails {
+    #[serde(default)]
+    pub family: Option<String>,
+    #[serde(default)]
+    pub format: Option<String>,
+    #[serde(default)]
+    pub parameter_size: Option<String>,
+    #[serde(default)]
+    pub quantization_level: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OllamaTagsResponse {
+    pub models: Vec<OllamaListedModel>,
 }
 
 #[cfg(test)]

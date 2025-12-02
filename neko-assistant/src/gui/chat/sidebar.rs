@@ -62,6 +62,7 @@ pub fn render_sidebar<V: Render>(
                                         // 会話情報部分（クリックで切り替え）
                                         div()
                                             .flex_1()
+                                            .min_w(px(0.0))
                                             .cursor_pointer()
                                             .on_mouse_down(
                                                 MouseButton::Left,
@@ -74,7 +75,12 @@ pub fn render_sidebar<V: Render>(
                                             .child(
                                                 div()
                                                     .v_flex()
-                                                    .child(div().text_sm().child(title.clone()))
+                                                    .child(
+                                                        div()
+                                                            .text_sm()
+                                                            .overflow_hidden()
+                                                            .child(title.clone()),
+                                                    )
                                                     .child(
                                                         div()
                                                             .text_xs()
@@ -89,6 +95,7 @@ pub fn render_sidebar<V: Render>(
                                     .child(
                                         // 削除ボタン（現在の会話以外は表示）
                                         div()
+                                            .flex_shrink_0()
                                             .when(!is_current, |d| {
                                                 d.p_1()
                                                     .rounded_sm()

@@ -9,6 +9,7 @@ mod langchain_tools;
 mod mcp_client;
 mod mcp_manager;
 mod message_handler;
+mod prompt_builders;
 // `run_gui` is called with full path `gui::run_gui()` below; importing the name is unused.
 
 /// Simple CLI for plugin management (foundation for GUI integration).

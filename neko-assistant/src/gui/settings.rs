@@ -104,13 +104,14 @@ impl gpui::Render for SettingsView {
         content = content.child(
             Button::new("toggle_langchain")
                 .label(checkbox_text)
-                .on_click({
+                .on_click(cx.listener({
                     let use_langchain = use_langchain_ref.clone();
-                    move |_, _win, _cx| {
+                    move |_this: &mut Self, _event, _window, cx| {
                         let mut val = use_langchain.borrow_mut();
                         *val = !*val;
+                        cx.notify();
                     }
-                }),
+                })),
         );
 
         // 保存ボタン
@@ -124,7 +125,7 @@ impl gpui::Render for SettingsView {
             div().h_flex().gap_2().child(
                 Button::new("save_settings")
                     .label("Save Settings")
-                    .on_click(move |_, _win, cx| {
+                    .on_click(cx.listener(move |_this: &mut Self, _event, _window, cx| {
                         // 入力値を取得
                         let ollama_url = ollama_input.read(cx).value().to_string();
                         let model = model_input.read(cx).value().to_string();
@@ -157,7 +158,9 @@ impl gpui::Render for SettingsView {
                                 *status_msg.borrow_mut() = Some(format!("Error saving: {}", e));
                             }
                         }
-                    }),
+
+                        cx.notify();
+                    })),
             ),
         );
 
