@@ -13,3 +13,6 @@ async-trait = "0.1"
 
 # depends on model-provider crate in workspace
 model-provider = { path = "../model-provider" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }

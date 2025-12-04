@@ -1,0 +1,29 @@
+[package]
+name = "phi4-mini-adapter"
+version = "0.1.0"
+edition = "2021"
+authors = ["tyaro <maintainers@neko-no-te.local>"]
+description = "ModelAdapter plugin that formats prompts for Microsoft Phi-4-mini-instruct (Hugging Face)."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://huggingface.co/microsoft/Phi-4-mini-instruct"
+documentation = "https://github.com/tyaro/neko_no_te/tree/master/docs/design/phi4-integration.md"
+keywords = ["phi4","plugin","adapter","llm","huggingface"]
+categories = ["development-tools", "network-programming"]
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Workspace local dependencies
+model-adapter = { path = "../../model-adapter" }
+model-provider = { path = "../../model-provider" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

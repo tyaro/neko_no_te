@@ -105,6 +105,8 @@ Available tools:
 - `neko-assistant/src/mcp_client.rs` に `ensure_mcp_config_path()` と `save_mcp_config()` を追加し、実行ファイルと同じディレクトリ（`cargo run` 時は `target/debug/`）に `mcp_servers.json` を常に生成・保存できるようにした。これにより GUI から設定を更新しても即座に永続化される。
 - GPUI 製の MCP 管理画面 `neko-assistant/src/gui/mcp_manager.rs` を新設。既存エントリの一覧表示、編集フォーム（name/command/args/env）、保存・削除、フォーム初期化をサポート。チャット画面ツールバーの「Manage MCP」ボタン（`neko-assistant/src/gui/chat/mod.rs`）からいつでも開ける。
 - プラグイン実行ガード `neko-assistant/src/plugins/guard.rs` を拡張し、`exec_with_output()` が `process_exec` capability を検証したうえで標準出力／標準エラーを収集して返すようにした。天気プラグインのようにコマンド出力をUIへ還元するシナリオでも再利用できる。
+- 2025-12-04 追記: `chat-core::ChatController` が `tokio::sync::watch` チャンネル経由で `ChatState` をブロードキャストするようになり、UI は `ChatEvent` を受け取ったタイミングで最新スナップショットを即座に取得できる。これに伴い `neko-assistant/src/gui/chat/` では UI 用の `ChatUiSnapshot` を追加し、モデルや MCP 情報の整形を `neko-ui` コンポーネントへ渡す薄いラッパーに整理した。
+- 2025-12-05 追記: `neko-assistant/src/gui/chat/initialization.rs` の `ChatViewBuilder` にフォールバック処理を実装。会話ストレージは `ConversationManager::default_storage_dir()` 取得 → 失敗時は `%TEMP%/neko-assistant/conversations` へ退避し、それでも初期化できない場合は `fallback_conversations` 配下で再試行する。MCP 設定は `load_mcp_config()` の失敗を握りつぶして LangChain モードを維持しつつ MCP 管理無しで起動し、`eprintln!` で理由を通知する。`cargo test -p neko-assistant mcp_context_disabled_without_langchain` / `mcp_context_falls_back_on_loader_error` で両フォールバックをカバー済み。
 
 ## 動作確認済み項目
 
@@ -115,6 +117,13 @@ Available tools:
 - ✅ 設定ファイルのロード（JSON形式）
 - ✅ Windows環境でのnpx実行（.cmd拡張子）
 - ✅ 模擬天気MCPサーバー (`research/mcp-weather-server`)
+
+## クレート棚卸しログ（Phase 5）
+
+- `target/metadata.json`: `cargo metadata --format-version 1` のスナップショット（2025-12-05 取得）。
+- `target/cargo-tree.txt`: `cargo tree --workspace` の通常依存グラフ。
+- `target/cargo-tree-no-default.txt`: `cargo tree --workspace --no-default-features` の出力。
+- `target/cargo-udeps.txt`: `cargo +nightly udeps --workspace` の結果。`mcp-weather-server` の `thiserror`、`neko-ui` の `ui-utils` が未使用候補として検出されたため、今後のクレート棚卸しタスクで要確認。
 
 ### 模擬天気MCPサーバーの概要
 

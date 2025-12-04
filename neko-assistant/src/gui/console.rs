@@ -1,3 +1,4 @@
+use chat_core::discover_plugins;
 use std::io;
 use std::path::Path;
 
@@ -6,7 +7,7 @@ pub fn run_gui(repo_root: &Path) -> io::Result<()> {
     println!("GUI feature not enabled. Showing plugin metadata preview:\n");
 
     // Reuse the existing discovery logic to show metadata
-    let list = crate::plugins::discover_plugins(repo_root)?;
+    let list = discover_plugins(repo_root)?;
     if list.is_empty() {
         println!("No plugins found in {}/plugins", repo_root.display());
         return Ok(());

@@ -32,11 +32,19 @@
 - 小さな差分でコミットする（機能追加・バグ修正・リファクタのいずれでも、できるだけ分割）。
 - コミットメッセージは `type(scope): short description` 形式を推奨（例：`feat(plugins): add plugin.toml parsing`）。
 - PR には必ず変更点の要約とテスト手順・影響範囲を記載する。
+- PR 説明には `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace`, `cargo run -p neko-assistant -- test-mcp` の実行結果をチェックリスト形式で必ず含め、未実行の場合は理由を明記する。
 
 リファクタ時の注意
 
 - リファクタであっても振る舞いが変わらないことを示すためにユニットテスト／統合テストを更新・追加する。
 - 大きな構造変更は小さいステップに分けて PR を出す（例：1) API 抽出 2) 実装移行 3) 削除）。
+
+GPUI ヘルパーとビュー モデル運用
+
+- 新規 UI ヘルパー（メニュー、ツールバー、ポップアップなど）が `ChatView` の状態を参照する場合、必ず `MenuContext` や `ToolbarViewModel` のような専用ビュー モデルを経由して依存を受け渡す。`ChatView` のフィールドへ直接アクセスするヘルパーはレビューで差し戻す。
+- 共有データ（`repo_root`, `plugins`, `ChatController` など）は `MenuContext` が `Arc` を再利用する形で受け取り、ウィジェット側はクローン済みのハンドルのみを触る。重複 clone や `Arc` の多重生成はテストで検出する。
+- ビュー モデルを導入したら `#[cfg(test)]` モジュールで軽量ユニットテストを追加し、表示テキストやトグルラベルなどウィジェットが依存する出力が期待通りであることを確認する。`MenuContext::new_for_testing` 等のテスト用 API を活用して GPUI 非依存のまま検証する。
+- 既存ウィジェットへ機能追加する場合も同じルールを適用し、ドロップダウンやボタンの listener がビュー モデルの状態にのみ触れるように保つ。
 
 Feature フラグとオプション依存
 

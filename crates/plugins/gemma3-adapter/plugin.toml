@@ -1,0 +1,10 @@
+## plugin.toml - plugin metadata for runtime discovery
+# Required fields used by `neko-assistant` UI: `name`, `description`, `version`, `author`
+
+name = "gemma3-adapter"
+description = "ModelAdapter plugin for Google Gemma 3n (4B Instruct) chat format."
+version = "0.1.0"
+author = "tyaro <maintainers@neko-no-te.local>"
+
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://huggingface.co/google/gemma-3n-E4B-it"

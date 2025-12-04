@@ -11,10 +11,18 @@ Location: docs/design/plugins.md
 
 ディレクトリと公開方法
 
-- 当面はワークスペース内で `crates/plugins/<adapter-name>` として作成してください。
-- 将来的に動的ロードをサポートする場合は `plugins/` 配下にビルド済みライブラリを置く方針に変更できます。
+- **開発時**: ワークスペース内で `crates/plugins/<adapter-name>` として作成します。
+- **配置**: ビルド後、`scripts/sync-plugins.ps1` を実行すると、コンパイル済みライブラリ（`.dll`/`.so`/`.dylib`）と `plugin.toml` が `target/<config>/plugins/<adapter-name>/` にコピーされます。
+- **実行時検出**: `neko-assistant` 実行ファイルと同じディレクトリの `plugins/` フォルダから動的にロードされます。
+- ソースコードは配置されず、バイナリファイルのみが配布・実行されます。
 
 必須事項
+
+- プラグインは `cdylib` として Cargo.toml に定義すること：
+  ```toml
+  [lib]
+  crate-type = ["cdylib", "rlib"]
+  ```
 
 - 「adapter」種別のプラグインは `model-adapter::ModelAdapter` トレイトを実装すること。
 - `supported_models()` で対応するモデル名（例: `"qwen3:8b"`）を返すこと。
@@ -26,9 +34,12 @@ Location: docs/design/plugins.md
 簡単な作成手順
 
 1. `crates/plugins/adapter-template` をコピーして新しいディレクトリ名に変更する。
-2. `Cargo.toml` の `name` と `description` を更新する。
+2. `Cargo.toml` の `name` と `description` を更新し、`[lib]` セクションで `crate-type = ["cdylib", "rlib"]` を設定する。
 3. `src/lib.rs` 内の実装箇所（`TODO` コメント）を編集してモデル固有のシリアライズや function-calling の整形を実装する。
-4. `cargo build -p <crate-name>` でビルド、`cargo test -p <crate-name>` でテストを実行する。
+4. `cargo build --workspace` でビルドする。
+5. `pwsh .\scripts\sync-plugins.ps1 -Configuration Debug` を実行し、コンパイル済みライブラリを `target/debug/plugins/` に配置する。
+6. `cargo run -p neko-assistant -- list` でプラグインが検出されることを確認する。
+7. `cargo test -p <crate-name>` でテストを実行する。
 
 パブリッシング（外部共有）
 

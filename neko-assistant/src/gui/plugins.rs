@@ -1,4 +1,4 @@
-use crate::plugins::PluginEntry;
+use chat_core::PluginEntry;
 use gpui::*;
 use gpui_component::button::Button;
 use gpui_component::StyledExt;

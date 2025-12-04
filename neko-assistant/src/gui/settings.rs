@@ -1,3 +1,4 @@
+use crate::gui::window_options_with_title;
 use gpui::*;
 use gpui_component::button::*;
 use gpui_component::input::{Input, InputState};
@@ -175,7 +176,7 @@ impl gpui::Render for SettingsView {
 
 /// 設定ウィンドウを開く
 pub fn open_settings_window(cx: &mut App) {
-    let _ = cx.open_window(WindowOptions::default(), move |window, cx| {
+    let _ = cx.open_window(window_options_with_title("Settings"), move |window, cx| {
         let view = cx.new(|cx| SettingsView::new(window, cx));
         cx.new(|cx| Root::new(view, window, cx))
     });

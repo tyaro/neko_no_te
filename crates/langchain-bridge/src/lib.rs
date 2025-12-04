@@ -102,6 +102,33 @@ impl LangChainToolAgent {
         let output = executor.invoke(vars).await?;
         Ok(output)
     }
+
+    /// デバッグモードで実行し、LLMとの生の対話を stderr に出力
+    pub async fn invoke_with_debug(&self, input: &str) -> Result<String> {
+        let vars = prompt_args! {
+            "input" => format!("{}\n\nユーザー入力:\n{}", JAPANESE_INSTRUCTION, input),
+        };
+
+        eprintln!("\n=== LangChain Debug Output ===");
+        eprintln!("[DEBUG] User Input:");
+        eprintln!("{}", input);
+        eprintln!("\n[DEBUG] Prompt sent to LLM:");
+        eprintln!("{}\n\nユーザー入力:\n{}", JAPANESE_INSTRUCTION, input);
+
+        let executor = self.executor.lock().await;
+
+        // Note: langchain-rust の AgentExecutor は内部ステップを直接公開していないため、
+        // invoke を呼び出して結果のみを取得します。
+        // より詳細なトレースが必要な場合は、langchain-rust にカスタムオブザーバーを実装する必要があります。
+        eprintln!("\n[DEBUG] Executing agent...");
+        let output = executor.invoke(vars).await?;
+
+        eprintln!("\n[DEBUG] Final LLM Response:");
+        eprintln!("{}", output);
+        eprintln!("=== End Debug Output ===\n");
+
+        Ok(output)
+    }
 }
 
 #[cfg(test)]

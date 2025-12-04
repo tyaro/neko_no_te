@@ -1,0 +1,10 @@
+## plugin.toml - plugin metadata for runtime discovery
+# Required fields used by `neko-assistant` UI: `name`, `description`, `version`, `author`
+
+name = "qwen3-adapter"
+description = "ModelAdapter plugin for Qwen 3 (4B Instruct) chat format."
+version = "0.1.0"
+author = "tyaro <maintainers@neko-no-te.local>"
+
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507"

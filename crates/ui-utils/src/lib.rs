@@ -7,6 +7,8 @@
 
 pub mod scroll_utils;
 pub mod text_input;
+pub mod text_style;
 
 pub use scroll_utils::*;
 pub use text_input::*;
+pub use text_style::*;

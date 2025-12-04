@@ -1,0 +1,10 @@
+## plugin.toml - plugin metadata for runtime discovery
+# Required fields used by `neko-assistant` UI: `name`, `description`, `version`, `author`
+
+name = "llama3-adapter"
+description = "ModelAdapter plugin for Meta Llama 3.1 (8B Instruct) chat format."
+version = "0.1.0"
+author = "tyaro <maintainers@neko-no-te.local>"
+
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"

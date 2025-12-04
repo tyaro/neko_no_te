@@ -19,7 +19,7 @@ impl ConversationManager {
 
         // ディレクトリが存在しなければ作成
         if !storage_dir.exists() {
-            fs::create_dir_all(&storage_dir).map_err(|e| HistoryError::Io(e))?;
+            fs::create_dir_all(&storage_dir).map_err(HistoryError::Io)?;
         }
 
         Ok(Self { storage_dir })
@@ -43,7 +43,7 @@ impl ConversationManager {
         let json = serde_json::to_string_pretty(conversation)
             .map_err(|e| HistoryError::Serialization(e.to_string()))?;
 
-        fs::write(path, json).map_err(|e| HistoryError::Io(e))?;
+        fs::write(path, json).map_err(HistoryError::Io)?;
 
         Ok(())
     }
@@ -56,7 +56,7 @@ impl ConversationManager {
             return Err(HistoryError::NotFound(id.to_string()));
         }
 
-        let json = fs::read_to_string(path).map_err(|e| HistoryError::Io(e))?;
+        let json = fs::read_to_string(path).map_err(HistoryError::Io)?;
 
         let conversation = serde_json::from_str(&json)
             .map_err(|e| HistoryError::Deserialization(e.to_string()))?;
@@ -72,7 +72,7 @@ impl ConversationManager {
             return Err(HistoryError::NotFound(id.to_string()));
         }
 
-        fs::remove_file(path).map_err(|e| HistoryError::Io(e))?;
+        fs::remove_file(path).map_err(HistoryError::Io)?;
 
         Ok(())
     }
@@ -81,10 +81,10 @@ impl ConversationManager {
     pub fn list_metadata(&self) -> Result<Vec<ConversationMetadata>, HistoryError> {
         let mut metadata_list = Vec::new();
 
-        let entries = fs::read_dir(&self.storage_dir).map_err(|e| HistoryError::Io(e))?;
+        let entries = fs::read_dir(&self.storage_dir).map_err(HistoryError::Io)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| HistoryError::Io(e))?;
+            let entry = entry.map_err(HistoryError::Io)?;
             let path = entry.path();
 
             // JSONファイルのみ対象

@@ -32,21 +32,59 @@ if (-not (Test-Path $targetPlugins)) {
     New-Item -ItemType Directory -Path $targetPlugins -Force | Out-Null
 }
 
+$targetDir = Join-Path $repoRoot ("target\{0}" -f $Configuration.ToLower())
+
 Get-ChildItem -Directory -Path $pluginsSrc | ForEach-Object {
     $pluginDir = $_.FullName
+    $pluginName = $_.Name
     $pluginToml = Join-Path $pluginDir 'plugin.toml'
+    
     if (-not (Test-Path $pluginToml)) {
-        Write-Host "Skipping $($_.Name) (no plugin.toml)"
+        Write-Host "Skipping $pluginName (no plugin.toml)"
         return
     }
 
-    $dest = Join-Path $targetPlugins $_.Name
+    # Find the compiled library
+    # Plugin directory names use hyphens, but Rust library names use underscores
+    $libName = $pluginName -replace '-','_'
+    $libPattern = "*$libName*"
+    $libFiles = Get-ChildItem -Path $targetDir -Filter "*.dll" -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -like $libPattern }
+    
+    if (-not $libFiles) {
+        $libFiles = Get-ChildItem -Path $targetDir -Filter "*.so" -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -like $libPattern }
+    }
+    
+    if (-not $libFiles) {
+        $libFiles = Get-ChildItem -Path $targetDir -Filter "*.dylib" -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -like $libPattern }
+    }
+
+    if (-not $libFiles) {
+        Write-Warning "No compiled library found for plugin '$pluginName'. Run 'cargo build' first."
+        return
+    }
+
+    $dest = Join-Path $targetPlugins $pluginName
+    
+    # Clean existing directory
     if (Test-Path $dest) {
         Remove-Item -Recurse -Force -LiteralPath $dest
     }
+    
+    New-Item -ItemType Directory -Path $dest -Force | Out-Null
 
-    Write-Host "Copying plugin '$($_.Name)' -> $dest"
-    Copy-Item -Recurse -Force -LiteralPath $pluginDir -Destination $dest
+    Write-Host "Copying plugin '$pluginName' -> $dest"
+    
+    # Copy plugin.toml
+    Copy-Item -Force -LiteralPath $pluginToml -Destination $dest
+    
+    # Copy compiled library
+    foreach ($lib in $libFiles) {
+        Copy-Item -Force -LiteralPath $lib.FullName -Destination $dest
+        Write-Host "  - $($lib.Name)"
+    }
 }
 
 Write-Host "Plugin sync complete for configuration: $Configuration"

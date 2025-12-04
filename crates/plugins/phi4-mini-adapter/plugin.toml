@@ -1,0 +1,13 @@
+## plugin.toml - plugin metadata for runtime discovery and crates.io package metadata example
+# Required fields used by `neko-assistant` UI: `name`, `description`, `version`, `author`
+# Fill these and keep this file at the crate root so the runtime can read it when loading plugins.
+
+name = "phi4-mini-adapter"
+description = "ModelAdapter plugin for Microsoft Phi-4-mini-instruct prompt & tool formatting."
+version = "0.1.0"
+author = "tyaro <maintainers@neko-no-te.local>"
+kind = "adapter"
+models = ["phi4-mini:3.8b", "Phi-4-mini-instruct"]
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://huggingface.co/microsoft/Phi-4-mini-instruct"
+priority = 50

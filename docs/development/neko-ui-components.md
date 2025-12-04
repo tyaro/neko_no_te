@@ -6,29 +6,11 @@
 
 ## 作成したコンポーネント
 
-### 1. TextInput
+> **2025-12-04 更新**: TextInput コンポーネントは Phase 5 で `gpui-component::InputState`
+> ベースの `chat_input` に集約したため現在は削除済み。以下は現行で維持している
+> コンポーネントの一覧。
 
-IME対応の複数行テキスト入力コンポーネント
-
-**特徴**:
-- 日本語IME完全サポート
-- カスタマイズ可能な高さ（min/max）
-- プレースホルダー対応
-- フォーカス管理統合
-
-**使用例**:
-```rust
-use neko_ui::TextInput;
-
-let text_input = cx.new(|cx| {
-    TextInput::new(cx)
-        .placeholder("Type a message...")
-        .min_height(px(80.0))
-        .max_height(px(200.0))
-});
-```
-
-### 2. ChatBubble
+### 1. ChatBubble
 
 チャットメッセージ表示用のバブルコンポーネント
 
@@ -101,7 +83,6 @@ crates/
 │   └── impl_entity_input_handler! macro
 │
 └── neko-ui/           # 高レベルコンポーネント
-    ├── TextInput      # 再利用可能なInput
     └── ChatBubble     # 再利用可能なBubble
 
 neko-assistant/
@@ -137,7 +118,6 @@ crates/neko-ui/
 ├── README.md
 └── src/
     ├── lib.rs
-    ├── text_input.rs
     └── chat_bubble.rs
 ```
 

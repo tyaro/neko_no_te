@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "neko-assistant",
+    "crates/chat-core",
     "crates/model-provider",
     "crates/model-adapter",
     "crates/ollama-client",
@@ -8,6 +9,10 @@ members = [
     "crates/chat-engine",
     "crates/chat-history",
     "crates/plugins/adapter-template",
+    "crates/plugins/phi4-mini-adapter",
+    "crates/plugins/llama3-adapter",
+    "crates/plugins/gemma3-adapter",
+    "crates/plugins/qwen3-adapter",
     "crates/ui-utils",
     "crates/neko-ui",
     "crates/prompt-spi",

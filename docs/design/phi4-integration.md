@@ -8,6 +8,13 @@
 - [microsoft/phi-4 - Hugging Face](https://huggingface.co/microsoft/phi-4)
 - [microsoft/Phi-4-mini-instruct - Hugging Face](https://huggingface.co/microsoft/Phi-4-mini-instruct)
 
+## 外部アダプタプラグイン
+
+- 実装場所: `crates/plugins/phi4-mini-adapter`
+- 役割: `<|system|> / <|user|> / <|assistant|>` テンプレートと `<|tool|> ... <|/tool|>` ブロックを自動組み立てし、`phi4-mini:3.8b` と `Phi-4-mini-instruct` の両モデル名をサポート。
+- `plugin.toml` メタデータで kind=adapter, models=[...] を宣言。`scripts/sync-plugins.ps1` を実行すると `target/<config>/plugins/phi4-mini-adapter` に同期され、実行バイナリが自動検出する。
+- 追加の詳細・テスト手順は `crates/plugins/phi4-mini-adapter/README.md` を参照。
+
 ## モデル仕様（Phi-4-mini-instruct）
 
 | 項目 | 内容 |

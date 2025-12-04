@@ -72,10 +72,7 @@ pub mod ollama_impl {
                 .await
                 .map_err(|e| ProviderError::Http(e.to_string()))?;
 
-            let structured = match serde_json::from_str::<serde_json::Value>(&text) {
-                Ok(v) => Some(v),
-                Err(_) => None,
-            };
+            let structured = serde_json::from_str::<serde_json::Value>(&text).ok();
 
             Ok(GenerateResult { text, structured })
         }
@@ -105,10 +102,7 @@ pub mod ollama_impl {
                 .await
                 .map_err(|e| ProviderError::Http(e.to_string()))?;
             // Try to parse structured JSON if possible, otherwise leave None.
-            let structured = match serde_json::from_str::<serde_json::Value>(&text) {
-                Ok(v) => Some(v),
-                Err(_) => None,
-            };
+            let structured = serde_json::from_str::<serde_json::Value>(&text).ok();
             Ok(GenerateResult { text, structured })
         }
     }

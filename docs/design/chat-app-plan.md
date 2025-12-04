@@ -252,9 +252,10 @@ pub struct LangChainEngine {
 
 **修正**: フィールドを削除し、必要な情報は `Ollama` インスタンスから取得。
 
-### 2. 非同期パターンの統一
-現在は `std::thread::spawn` + `tokio::runtime::Runtime::new()` を使用。
-GPUIの推奨パターンに統一する必要あり。
+### 2. 非同期パターンの統一（2025-12-03 完了）
+- モデル一覧取得や MCP メタデータ更新などの非同期処理は `chat-core::ChatController` が tokio runtime 上で実行。
+- UI (`neko-assistant/src/gui/chat/mod.rs`) は `ChatCommand` を送るだけで、受信した `ChatEvent` を共有 `ChatState` から描画に反映する。
+- 以前の `std::thread::spawn + tokio::runtime::Runtime::new()` は全て撤去済み。UI には `cx.spawn` などの GPUI タスクしか残っていない。
 
 ### 3. エラーハンドリングの強化
 ```rust

@@ -13,6 +13,7 @@ Location: docs/design/model-integration.md
 
 - デフォルトでサポートするモデル: `llama3.1:8b`（`model-adapter` の `Llama3DefaultAdapter`）
 - モデル固有の function-calling/ツール呼出フォーマットは `ModelAdapter` に内包し、将来の増加はプラグインで拡張する。
+- `Phi-4-mini-instruct` は外部プラグイン (`crates/plugins/phi4-mini-adapter`) で提供し、チャットテンプレート差分を runtime で差し替え可能にした。
 - モデルへの送信/受信（HTTP 等）の責務は `ModelProvider`（例: `ollama-client`）が担当する。
 
 背景と理由
@@ -49,9 +50,17 @@ ToolSpec
 3. アダプタは与えられた `ToolSpec` 等をモデル固有形式に直列化し、`ModelProvider::generate` を呼ぶ。
 4. 返却された文字列を adapter が必要に応じて解析（JSON ⇒ structured field）して `GenerateResult` を返す。
 
+## UI / Controller 連携（2025-12-03 更新）
+
+- `chat-core::ChatController` が `ChatState::available_models` を保持し、`ChatCommand::RefreshModels` 実行時に `OllamaClient` で一覧を取得する。
+- モデル検出完了時は `ChatEvent::ModelsUpdated` を発火し、UI 側は共有 `ChatState` スナップショットだけを参照して `neko-ui::model_selector_row` を更新する。
+- UI からのモデル切替は `ChatCommand::SwitchModel` に集約され、成功時のみ `ChatEvent::ModelChanged` で同期される。これにより UI は独自の async runtime を持たず、`ChatController` が唯一の I/O 境界となる。
+- 既定モデルや curated リストは controller が管理し、フォールバックも内部で処理するため、UI は単に `available_models` を props としてレンダリングすればよい。
+
 プラグイン戦略
 
 - 新しいモデルフォーマット対応は `plugins/` (将来的に) または `crates/plugins/<adapter>`（当面はワークスペース内 crate 追加）として公開。
+  - 例: `crates/plugins/phi4-mini-adapter` が Phi-4 用 Formatter を配布中。
 - プラグインは `ModelAdapter` を実装すれば良い。外部開発者向けに `crates/model-adapter/templates` を用意することを推奨。
 
 設定例（TOML）

@@ -142,6 +142,8 @@ pub trait PromptBuilderFactory: Send + Sync {
 pub type CreatePromptBuilderFactory = unsafe extern "C" fn() -> *mut dyn PromptBuilderFactory;
 
 /// ホスト側ヘルパー：FFI ポインタを Box に戻す
+/// # Safety
+/// The caller must ensure that `ptr` is a valid pointer to a `dyn PromptBuilderFactory`.
 pub unsafe fn factory_from_raw(
     ptr: *mut dyn PromptBuilderFactory,
 ) -> Box<dyn PromptBuilderFactory> {

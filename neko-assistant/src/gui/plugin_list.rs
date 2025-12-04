@@ -1,10 +1,10 @@
 //! プラグインリストビュー
 
+use chat_core::PluginEntry;
 use gpui::*;
 use gpui_component::button::*;
 use gpui_component::StyledExt;
 use std::path::PathBuf;
-use crate::plugins::PluginEntry;
 
 pub struct PluginListView {
     _repo_root: PathBuf,

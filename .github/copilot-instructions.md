@@ -10,6 +10,7 @@
 - **プラグイン開発**: `crates/plugins/adapter-template/` をコピー→`Cargo.toml`/`plugin.toml` を更新→`ModelAdapter::{supported_models, invoke}` を実装→`cargo test -p <plugin>`→`pwsh .\scripts\sync-plugins.ps1 -Configuration Debug` で `target/<config>/plugins/` に配置。
 - **動的ロード**: `neko-assistant/src/plugins/{metadata,discovery,validation,enabled}.rs` が `plugin.toml` をパースし UI へ公開。シリアライズ項目を変えたら discovery/validation 両方を更新。
 - **GPUI ルール**: `render()` では `try_lock()` で即クローンし、`cx.notify()` は通知チャネルと二重で呼ばない。スクロールは `flex_1 + h_full` の親→`overflow_hidden`→`overflow_y_scroll().track_scroll(handle)` の子で構成。
+- **UI ヘルパー規約**: 新規のメニュー/ツールバー/ポップアップ ヘルパーは `MenuContext` や `ToolbarViewModel` のようなビュー モデル経由で依存を受け渡し、`ChatView` のフィールドへ直接触らない。ビュー モデルを追加したら、ラベルや表示文言を検証する軽量ユニットテストを同ファイルに必ず用意する。
 - **状態管理**: `chat-history` クレートで会話を取得/保存し、UI 側は immut な `ConversationSnapshot` を利用。ロック保持時間を最小化する。
 - **ビルド/検証**: `cargo build --workspace`, `cargo test --workspace`, `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` が PR 必須。LangChain/MCP 実験は `research/<feature>/` で venv を切り、本体に Python 依存を持ち込まない。
 - **スクリプト**: `scripts/sync-plugins.ps1` が build 成果物→`target/*/plugins/` 同期を行う。`scripts/build_and_sync.ps1` はアプリビルドとプラグイン配置をまとめて行うため、GUI デバッグ前に実行。

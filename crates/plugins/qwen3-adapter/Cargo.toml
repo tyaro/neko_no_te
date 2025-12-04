@@ -1,0 +1,29 @@
+[package]
+name = "qwen3-adapter"
+version = "0.1.0"
+edition = "2021"
+authors = ["tyaro <maintainers@neko-no-te.local>"]
+description = "ModelAdapter plugin for Qwen 3 (4B Instruct) chat format."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tyaro/neko_no_te"
+homepage = "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507"
+documentation = "https://github.com/tyaro/neko_no_te/tree/master/docs/design/plugins.md"
+keywords = ["qwen3","plugin","adapter","llm","alibaba"]
+categories = ["development-tools", "network-programming"]
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Workspace local dependencies
+model-adapter = { path = "../../model-adapter" }
+model-provider = { path = "../../model-provider" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

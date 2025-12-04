@@ -1,4 +1,5 @@
-use crate::mcp_client::{load_mcp_config, save_mcp_config, McpServerConfig};
+use crate::gui::window_options_with_title;
+use chat_core::{load_mcp_config, save_mcp_config, McpServerConfig};
 use gpui::*;
 use gpui_component::button::Button;
 use gpui_component::input::{Input, InputState};
@@ -6,6 +7,7 @@ use gpui_component::{Root, StyledExt};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct McpManagerView {
     configs: Rc<RefCell<Vec<McpServerConfig>>>,
@@ -15,10 +17,15 @@ pub struct McpManagerView {
     args_input: Entity<InputState>,
     env_input: Entity<InputState>,
     status: Rc<RefCell<Option<String>>>,
+    on_configs_changed: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl McpManagerView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        on_configs_changed: Option<Arc<dyn Fn() + Send + Sync>>,
+    ) -> Self {
         let configs = load_mcp_config().unwrap_or_else(|e| {
             eprintln!("Failed to load MCP config: {}", e);
             Vec::new()
@@ -37,6 +44,7 @@ impl McpManagerView {
             args_input,
             env_input,
             status: Rc::new(RefCell::new(None)),
+            on_configs_changed,
         }
     }
 
@@ -135,7 +143,10 @@ impl McpManagerView {
             save_mcp_config(&list)
         };
         match result {
-            Ok(_) => self.set_status(Some(format!("Removed '{}'.", removed.name))),
+            Ok(_) => {
+                self.set_status(Some(format!("Removed '{}'.", removed.name)));
+                self.notify_configs_changed();
+            }
             Err(e) => self.set_status(Some(format!("Failed to save config: {}", e))),
         }
     }
@@ -175,11 +186,18 @@ impl McpManagerView {
                     Ok(_) => {
                         self.set_status(Some(format!("Saved '{}'.", cfg.name)));
                         self.set_form(window, cx, &cfg);
+                        self.notify_configs_changed();
                     }
                     Err(e) => self.set_status(Some(format!("Failed to save: {}", e))),
                 }
             }
             Err(err) => self.set_status(Some(err)),
+        }
+    }
+
+    fn notify_configs_changed(&self) {
+        if let Some(callback) = &self.on_configs_changed {
+            callback();
         }
     }
 }
@@ -286,11 +304,18 @@ impl Render for McpManagerView {
     }
 }
 
-pub fn open_mcp_manager_window(cx: &mut App) {
-    let _ = cx.open_window(WindowOptions::default(), move |window, cx| {
-        let view = cx.new(|cx| McpManagerView::new(window, cx));
-        cx.new(|cx| Root::new(view, window, cx))
-    });
+pub fn open_mcp_manager_window(
+    cx: &mut App,
+    on_configs_changed: Option<Arc<dyn Fn() + Send + Sync>>,
+) {
+    let callback = on_configs_changed.clone();
+    let _ = cx.open_window(
+        window_options_with_title("MCP Server Manager"),
+        move |window, cx| {
+            let view = cx.new(|cx| McpManagerView::new(window, cx, callback.clone()));
+            cx.new(|cx| Root::new(view, window, cx))
+        },
+    );
 }
 
 fn parse_env(text: &str) -> Result<Option<HashMap<String, String>>, String> {

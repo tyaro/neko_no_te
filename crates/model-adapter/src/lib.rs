@@ -64,6 +64,12 @@ pub trait ModelAdapter: Send + Sync + 'static {
 /// Default adapter for `llama3.1:8b`.
 pub struct Llama3DefaultAdapter;
 
+impl Default for Llama3DefaultAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Llama3DefaultAdapter {
     pub fn new() -> Self {
         Self {}
@@ -121,6 +127,12 @@ impl ModelAdapter for Llama3DefaultAdapter {
 ///
 /// It also supports native function calling with the `<|tool|>...</|tool|>` format.
 pub struct Phi4MiniAdapter;
+
+impl Default for Phi4MiniAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Phi4MiniAdapter {
     pub fn new() -> Self {
