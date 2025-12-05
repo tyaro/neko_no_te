@@ -1,3 +1,6 @@
 [
-  "phi4-mini-adapter"
+  "phi4-mini-adapter",
+  "llama3-adapter",
+  "gemma3-adapter",
+  "qwen3-adapter"
 ]

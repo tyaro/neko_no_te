@@ -1,0 +1,23 @@
+[package]
+name = "phi4-mini-prompt-builder"
+version = "0.1.0"
+edition = "2021"
+authors = ["tyaro <maintainers@neko-no-te.local>"]
+description = "PromptBuilder plugin for Microsoft Phi-4-mini-instruct format (plugin-style)."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tyaro/neko_no_te"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Workspace local dependency to the SPI
+prompt-spi = { path = "../../prompt-spi" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

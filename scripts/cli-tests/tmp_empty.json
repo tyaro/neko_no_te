@@ -1,0 +1,1 @@
+{ "tests": [ { "model": "phi4-mini:3.8b", "expected_prompt_contains": "<|assistant|>" } ] }

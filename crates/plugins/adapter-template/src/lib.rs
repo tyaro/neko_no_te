@@ -18,6 +18,12 @@ impl MyAdapter {
     }
 }
 
+impl Default for MyAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ModelAdapter for MyAdapter {
     fn adapter_name(&self) -> &str {

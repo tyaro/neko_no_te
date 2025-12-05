@@ -12,7 +12,7 @@ pub struct PluginListView {
 
 impl PluginListView {
     pub fn new(repo_root: &Path, plugins: Vec<PluginEntry>) -> Self {
-        let selected = if plugins.len() > 0 { Some(0) } else { None };
+        let selected = if plugins.is_empty() { None } else { Some(0) };
         Self {
             _repo_root: repo_root.to_path_buf(),
             plugins,
@@ -33,7 +33,7 @@ impl gpui::Render for PluginListView {
         // Left: list of plugins as buttons. Right: details for selected plugin.
         let list_col = {
             let mut col = div().v_flex().gap_2().size_full();
-            for (_i, entry) in self.plugins.iter().enumerate() {
+            for entry in self.plugins.iter() {
                 let title = entry
                     .metadata
                     .as_ref()

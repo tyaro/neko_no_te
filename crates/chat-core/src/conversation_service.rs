@@ -4,6 +4,7 @@ use chat_history::{
     Conversation, ConversationManager, ConversationMetadata, HistoryError, Message, MessageRole,
     Result as HistoryResult,
 };
+use serde_json::Value;
 
 /// 会話データと永続化を仲介するサービス層。
 /// UI やハンドラーが直接 Mutex を触らずに済むよう共通処理をまとめる。
@@ -110,6 +111,18 @@ impl ConversationService {
         self.save_current()
     }
 
+    /// メタデータ付きメッセージを追加して保存。
+    pub fn append_message_with_metadata(
+        &self,
+        role: MessageRole,
+        content: impl Into<String>,
+        metadata: Value,
+    ) -> HistoryResult<()> {
+        self.conversation_guard_mut()?
+            .add_message(Message::with_metadata(role, content, metadata));
+        self.save_current()
+    }
+
     /// 条件に一致する末尾メッセージを削除。
     pub fn pop_last_if<F>(&self, predicate: F) -> HistoryResult<bool>
     where
@@ -117,7 +130,7 @@ impl ConversationService {
     {
         let removed = {
             let mut conv = self.conversation_guard_mut()?;
-            if conv.messages.last().map(|m| predicate(m)).unwrap_or(false) {
+            if conv.messages.last().map(predicate).unwrap_or(false) {
                 conv.messages.pop();
                 true
             } else {

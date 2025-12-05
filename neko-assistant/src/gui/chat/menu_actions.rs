@@ -80,9 +80,10 @@ pub fn app_menu_button(
                         &view_for_scratchpad,
                         |this: &mut ChatView,
                          _event: &ClickEvent,
-                         window,
+                         _window,
                          cx: &mut gpui::Context<ChatView>| {
-                            this.open_scratchpad_sheet(window, cx);
+                            this.state.toggle_scratchpad();
+                            cx.notify();
                         },
                     )),
                 );
@@ -91,9 +92,22 @@ pub fn app_menu_button(
                     &view_for_console,
                     |this: &mut ChatView,
                      _event: &ClickEvent,
-                     window,
+                     _window,
                      cx: &mut gpui::Context<ChatView>| {
-                        this.open_console_sheet(window, cx);
+                        this.state.toggle_console();
+                        cx.notify();
+                    },
+                )));
+
+                // allow toggling the main chat panel visibility
+                menu = menu.item(PopupMenuItem::new("Chat panel").on_click(window.listener_for(
+                    &view_for_toggle,
+                    |this: &mut ChatView,
+                     _event: &ClickEvent,
+                     _window,
+                     cx: &mut gpui::Context<ChatView>| {
+                        this.state.toggle_chat_panel();
+                        cx.notify();
                     },
                 )));
 

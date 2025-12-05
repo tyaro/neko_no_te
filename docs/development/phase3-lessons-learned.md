@@ -227,6 +227,47 @@ div()
     )
 ```
 
+### gpui-component の ScrollableElement 使用時の注意
+
+**重要**: `.overflow_y_scrollbar()` や `.overflow_x_scrollbar()` を使う場合、**親に明示的な高さ/幅制約が必須**です。
+
+```rust
+// ❌ 間違い: 高さ制約なし → スクロールが機能しない
+div()
+    .v_flex()
+    .overflow_y_scrollbar()  // 高さ制約がないため動かない
+    .children(items)
+
+// ✅ 正解: 明示的な高さ制約
+div()
+    .h(px(200.0))            // 固定高さ
+    .v_flex()
+    .overflow_y_scrollbar()  // スクロール可能
+    .children(items)
+
+// ✅ 正解: flex_1 + 親の高さ制約
+parent_div()
+    .h_full()                // 親に高さ制約
+    .child(
+        div()
+            .flex_1()        // 親の残りスペースを占有
+            .v_flex()
+            .overflow_y_scrollbar()
+            .children(items)
+    )
+```
+
+**原因**:
+- `ScrollableElement` は内部で `Scrollable` ラッパーを作成
+- スクロール領域のサイズを計算するには親の境界（bounds）が必要
+- 高さ/幅制約がないと、コンテンツがはみ出していることを検知できない
+
+**教訓**:
+- **スクロール可能な要素には必ず `.h(px(...))` または `.flex_1() + 親の高さ制約`**
+- **横スクロールの場合は `.w(px(...))` が必要**
+- **両方向スクロールなら両方の制約が必要**
+- **研究用サンプルを作る際も、この制約を忘れずに**
+
 ### モジュール分割
 ```rust
 // ファイル構成

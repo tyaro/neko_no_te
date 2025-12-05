@@ -1,18 +1,18 @@
-use super::menu_context::MenuContext;
-use crate::gui::window_options_with_title;
 use chat_core::{ChatCommand, ChatController};
 use gpui::*;
 use gpui_component::button::Button;
-use gpui_component::{Root, StyledExt};
+use gpui_component::StyledExt;
 use neko_ui::ChatSidebarItem;
 use std::sync::Arc;
 
+#[allow(dead_code)]
 pub struct SessionPopupView {
     controller: Arc<ChatController>,
     sessions: Vec<ChatSidebarItem>,
 }
 
 impl SessionPopupView {
+    #[allow(dead_code)]
     pub fn new(controller: Arc<ChatController>, sessions: Vec<ChatSidebarItem>) -> Self {
         Self {
             controller,
@@ -86,14 +86,8 @@ impl Render for SessionPopupView {
     }
 }
 
-pub fn open_session_popup(
-    cx: &mut Context<super::ChatView>,
-    context: &MenuContext,
-    sessions: Vec<ChatSidebarItem>,
-) {
-    let controller = context.controller();
-    let _ = cx.open_window(window_options_with_title("Sessions"), move |window, cx| {
-        let view = cx.new(|_cx| SessionPopupView::new(controller.clone(), sessions.clone()));
-        cx.new(|cx| Root::new(view, window, cx))
-    });
-}
+// Session popup helper was used by inline toolbar controls.
+// Since the UI now exposes Sessions via other paths (or hides the session button),
+// the direct helper is removed to avoid dead code warnings. If we need to
+// expose an API for opening the session popup later, reintroduce a function
+// here with appropriate calls.

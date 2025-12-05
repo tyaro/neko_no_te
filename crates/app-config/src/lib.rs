@@ -269,7 +269,92 @@ fn ensure_schema(conn: &Connection) -> Result<()> {
     )
     .context("Failed to create app_config table")?;
 
+    // tokens table for storing API keys / secret tokens
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS tokens (
+            id INTEGER PRIMARY KEY,
+            service TEXT NOT NULL,
+            name TEXT NOT NULL,
+            value TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            UNIQUE(service, name)
+        )",
+        [],
+    )
+    .context("Failed to create tokens table")?;
+
     Ok(())
+}
+
+/// Store a token (service+name) into the given database path.
+pub fn set_token_in_db(path: &Path, service: &str, name: &str, value: &str) -> Result<()> {
+    let conn = open_database(path)?;
+    conn.execute(
+        "INSERT INTO tokens (service, name, value, created_at, updated_at)
+         VALUES (?, ?, ?, strftime('%s','now'), strftime('%s','now'))
+         ON CONFLICT(service, name) DO UPDATE SET value=excluded.value, updated_at=strftime('%s','now')",
+        params![service, name, value],
+    )
+    .context("Failed to insert/update token")?;
+    Ok(())
+}
+
+/// Convenience wrapper that stores a token using default DB path.
+pub fn set_token(service: &str, name: &str, value: &str) -> Result<()> {
+    let path = default_db_path()?;
+    set_token_in_db(&path, service, name, value)
+}
+
+/// Read a token value by service and name from the specified DB path.
+pub fn get_token_from_db(path: &Path, service: &str, name: &str) -> Result<Option<String>> {
+    let conn = open_database(path)?;
+    let mut stmt = conn
+        .prepare("SELECT value FROM tokens WHERE service = ? AND name = ?")
+        .context("Failed to prepare token select")?;
+    let result = stmt.query_row(params![service, name], |row| row.get(0));
+    match result {
+        Ok(v) => Ok(Some(v)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Convenience wrapper to get from default DB path.
+pub fn get_token(service: &str, name: &str) -> Result<Option<String>> {
+    let path = default_db_path()?;
+    get_token_from_db(&path, service, name)
+}
+
+/// Delete a token entry. Returns true if something was deleted.
+pub fn delete_token_in_db(path: &Path, service: &str, name: &str) -> Result<bool> {
+    let conn = open_database(path)?;
+    let changed = conn
+        .execute("DELETE FROM tokens WHERE service = ? AND name = ?", params![service, name])
+        .context("Failed to delete token")?;
+    Ok(changed > 0)
+}
+
+pub fn delete_token(service: &str, name: &str) -> Result<bool> {
+    let path = default_db_path()?;
+    delete_token_in_db(&path, service, name)
+}
+
+/// List tokens (service,name) without exposing values.
+pub fn list_tokens_in_db(path: &Path) -> Result<Vec<(String, String, i64, i64)>> {
+    let conn = open_database(path)?;
+    let mut stmt = conn
+        .prepare("SELECT service, name, created_at, updated_at FROM tokens ORDER BY service, name")
+        .context("Failed to prepare tokens list")?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+        .collect::<Result<Vec<_>, rusqlite::Error>>()?;
+    Ok(rows)
+}
+
+pub fn list_tokens() -> Result<Vec<(String, String, i64, i64)>> {
+    let path = default_db_path()?;
+    list_tokens_in_db(&path)
 }
 
 /// デフォルトのデータディレクトリを取得
@@ -332,5 +417,33 @@ mod tests {
         // 存在しないファイルの場合はデフォルトを返す
         let config = AppConfig::load_or_default();
         assert!(!config.ollama_base_url.is_empty());
+    }
+
+    #[test]
+    fn test_token_store_basic() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("tokens.db");
+
+        // initially none
+        assert!(get_token_from_db(&db_path, "openai", "default").unwrap().is_none());
+
+        set_token_in_db(&db_path, "openai", "default", "sk-XXX").unwrap();
+        let v = get_token_from_db(&db_path, "openai", "default").unwrap().unwrap();
+        assert_eq!(v, "sk-XXX");
+
+        // list should return entries but not reveal values
+        let list = list_tokens_in_db(&db_path).unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].0, "openai");
+        assert_eq!(list[0].1, "default");
+
+        // update value
+        set_token_in_db(&db_path, "openai", "default", "sk-NEW").unwrap();
+        let v2 = get_token_from_db(&db_path, "openai", "default").unwrap().unwrap();
+        assert_eq!(v2, "sk-NEW");
+
+        // delete
+        assert!(delete_token_in_db(&db_path, "openai", "default").unwrap());
+        assert!(get_token_from_db(&db_path, "openai", "default").unwrap().is_none());
     }
 }

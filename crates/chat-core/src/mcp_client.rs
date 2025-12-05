@@ -260,7 +260,9 @@ impl McpClient {
 impl Drop for McpClient {
     fn drop(&mut self) {
         if let Some(mut child) = self.server_process.take() {
-            let _ = child.kill();
+            if let Err(err) = child.start_kill() {
+                eprintln!("Failed to terminate MCP server: {}", err);
+            }
         }
     }
 }

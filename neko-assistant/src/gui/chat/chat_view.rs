@@ -1,13 +1,11 @@
 use super::chat_view_state::ChatViewState;
 use super::chat_window::chat_window;
-use super::console_window::console_window;
 use super::controller_facade::ChatControllerFacade;
 use super::event_loop::ChatEventLoop;
 use super::initialization::{ChatViewBuilder, ChatViewParts};
 use super::menu_actions::manage_mcp_button;
 use super::menu_bar_widget::menu_bar_widget;
 use super::menu_context::MenuContext;
-use super::session_popup::open_session_popup;
 use super::toolbar_view_model::ToolbarViewModel;
 use super::toolbar_widget::toolbar_widget;
 use super::ui_state::ChatUiSnapshot;
@@ -18,8 +16,11 @@ use chat_core::{
 };
 use gpui::*;
 use gpui_component::button::Button;
-use gpui_component::{Root, StyledExt, WindowExt};
-use neko_ui::{chat_input_panel, chat_messages_panel, mcp_status_panel, model_selector_row};
+use gpui_component::{Root, StyledExt};
+use neko_ui::{
+    chat_input_panel, chat_messages_panel, chat_workspace, mcp_status_panel, model_selector_row,
+    scratchpad_console,
+};
 use prompt_spi::PromptAgentMode;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -66,30 +67,9 @@ impl ChatView {
         self.controller.state_snapshot()
     }
 
-    pub(super) fn open_scratchpad_sheet(
-        &mut self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
-    ) {
-        let logs = ChatUiSnapshot::from_state(&self.chat_state_snapshot()).console_logs;
-        let view = cx.entity();
-        self.state.scratchpad().open_sheet(view, logs, window, cx);
-    }
-
-    pub(super) fn open_console_sheet(
-        &mut self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
-    ) {
-        let logs = ChatUiSnapshot::from_state(&self.chat_state_snapshot()).console_logs;
-
-        let _ = window.open_sheet(cx, move |sheet, _window, _app| {
-            sheet
-                .title(div().text_sm().text_color(rgb(0xffffff)).child("Console"))
-                .size(px(380.0))
-                .child(console_window(&logs))
-        });
-    }
+    // NOTE: scratchpad/console sheet helpers were previously used by inline toolbar
+    // buttons. We now toggle visibility via the top menu so these helpers are
+    // no longer required and removed to keep the codebase tidy.
 }
 
 impl Render for ChatView {
@@ -107,18 +87,20 @@ impl Render for ChatView {
         let menu_context = MenuContext::from_chat_view(self);
         let state = self.chat_state_snapshot();
         let ui_snapshot = ChatUiSnapshot::from_state(&state);
-        self.state.scroll_manager_mut().update();
-
-        let msgs_container = chat_messages_panel(
-            "chat_scroll_area",
-            self.state.scroll_manager().handle(),
-            &ui_snapshot.message_rows,
-        );
+        // Attach scroll handle to the messages panel so ScrollManager can control it
+        let msgs_container = chat_messages_panel(&ui_snapshot.message_rows, Some(self.state.scroll_handle()));
 
         let toolbar_model = ToolbarViewModel::from_chat_view(self);
         let toolbar = toolbar_widget(view_entity.clone(), toolbar_model, window);
         let selector = self.state.model_selector();
-        let model_controls = model_selector_row(selector.select_state(), selector.input_state());
+        let has_prompt_builder = self.prompt_registry.resolve(&state.active_model).is_some();
+        // Determine whether an installed plugin (adapter) advertises support for the active model ID
+        let has_adapter = self
+            .plugins
+            .iter()
+            .any(|p| p.metadata.as_ref().map(|m| m.models.iter().any(|mid| mid == &state.active_model)).unwrap_or(false));
+
+        let model_controls = model_selector_row(selector.select_state(), has_prompt_builder, has_adapter);
         let input_area = chat_input_panel(
             self.state.input_state(),
             "Enter: send, Shift+Enter: newline",
@@ -144,8 +126,8 @@ impl Render for ChatView {
         let mcp_panel = if self.state.show_mcp_status() {
             Some(
                 mcp_status_panel(
-                    &server_items,
-                    &tool_items,
+                    server_items,
+                    tool_items,
                     refresh_button,
                     manage_button_inline,
                 )
@@ -155,35 +137,65 @@ impl Render for ChatView {
             None
         };
 
-        let menu_context_for_sessions = menu_context.clone();
-        let session_button = Button::new("open_session_popup")
-            .label("Sessions")
-            .on_click(cx.listener(move |this, _event, _window, cx| {
-                let snapshot = this.chat_state_snapshot();
-                let sessions = ChatUiSnapshot::from_state(&snapshot).sidebar_items;
-                open_session_popup(cx, &menu_context_for_sessions, sessions);
-            }));
 
-        let mut chat_body = div().flex_1().min_h(px(0.0)).v_flex().child(toolbar);
+        let mut chat_body = div()
+            .h_full()
+            .v_flex()
+            .child(div().flex_shrink_0().child(toolbar));
         if let Some(panel) = mcp_panel {
-            chat_body = chat_body.child(panel);
+            chat_body = chat_body.child(div().flex_shrink_0().child(panel));
         }
-        let chat_body = chat_body.child(div().flex_1().min_h(px(0.0)).child(msgs_container));
+        let chat_body = chat_body.child(msgs_container);
 
-        let chat_panel = chat_window(chat_body, model_controls, input_area, session_button)
-            .flex_1()
-            .h_full();
+        let chat_panel = chat_window(chat_body, model_controls, input_area);
 
-        let view_entity = cx.entity();
+        let scratchpad_manager = self.state.scratchpad().clone();
+
+        // Inline action buttons removed; visibility and sheet toggles live in the top menu
+        let scratchpad_panel = scratchpad_console(
+            scratchpad_manager.editor_input(),
+            &ui_snapshot.console_logs,
+            self.state.show_scratchpad(),
+            self.state.show_console(),
+        );
+
+        // Use relative widths so panels resize with the window.
+        // Console/scratchpad: ~70% of workspace width, Chat main: ~30%.
+        // This keeps the console comfortably wider while the layout scales with window resizing.
+        // keep the console comfortably wide but do not allow it to shrink below 560px
+        let console_panel = div().w(relative(0.7)).min_w(px(560.0)).h_full()
+            .h_full()
+            .bg(rgb(0x111111))
+            .border_r_1()
+            .border_color(rgb(0x242424))
+            .child(scratchpad_panel);
+
+        let sidebar_placeholder = div().w(px(0.0)).h_full();
+        let main_panel = if self.state.show_chat_panel() {
+            // allow the chat panel to take ~30% of workspace width and scale responsively
+            // ensure chat remains usable when window is small
+            div().flex_1().w(relative(0.3)).min_w(px(360.0)).h_full().overflow_hidden().child(chat_panel)
+        } else {
+            // preserve layout but show placeholder when chat panel is hidden
+            div()
+                .flex_1()
+                .h_full()
+                .overflow_hidden()
+                .child(div().p_4().text_sm().text_color(rgb(0x888888)).child("Chat panel hidden"))
+        };
+        let workspace_content = chat_workspace(sidebar_placeholder, console_panel, main_panel);
+
+        // After the rendered tree has the scroll handle attached, flush pending scroll actions.
+        self.state.scroll_manager_mut().update();
+
         let menu_bar = menu_bar_widget(&menu_context, view_entity.clone());
 
+        // Fill the window edge-to-edge (no outer padding / centering) so there are
+        // no gaps between the window frame and panels.
         let workspace = div()
             .flex_1()
-            .h_flex()
-            .justify_center()
-            .px(px(24.0))
-            .py(px(16.0))
-            .child(div().flex_1().max_w(px(1100.0)).h_full().child(chat_panel));
+            .min_h(px(0.0))
+            .child(div().h_full().w_full().child(workspace_content));
 
         let mut root_layout = div().size_full().v_flex().child(menu_bar).child(workspace);
 
@@ -203,8 +215,7 @@ pub fn describe_agent_mode(mode: PromptAgentMode) -> &'static str {
 }
 
 pub fn run_gui(repo_root: &Path) -> std::io::Result<()> {
-    let list = discover_plugins(repo_root)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let list = discover_plugins(repo_root).map_err(std::io::Error::other)?;
     let mut registry = PromptBuilderRegistry::from_plugins(&list);
     register_builtin_prompt_builders(&mut registry);
     let prompt_registry = Arc::new(registry);

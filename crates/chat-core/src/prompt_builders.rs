@@ -25,9 +25,102 @@ pub fn register_builtin_prompt_builders(registry: &mut PromptBuilderRegistry) {
             PromptAgentMode::DirectProvider,
             50,
             "builtin",
-            || Box::new(QwenPromptBuilder::default()),
+            || Box::new(QwenPromptBuilder),
         ),
     );
+
+    // Builtin phi4 prompt builder (for stability and testing) — developers can
+    // run CLI tests using this host implementation to avoid cross-dylib ABI issues.
+    registry.register_host_builder(
+        "phi4-mini:3.8b",
+        HostPromptBuilderFactory::new(
+            PromptMetadata {
+                name: "Builtin Phi4 Prompt".into(),
+                version: "0.1.0".into(),
+                description: Some("Builtin phi4-mini prompt format (system/user/assistant/tool blocks)".into()),
+                supported_models: vec!["phi4-mini:3.8b".into(), "Phi-4-mini-instruct".into()],
+                homepage: None,
+                preferred_agent: PromptAgentMode::DirectProvider,
+            },
+            PromptAgentMode::DirectProvider,
+            100,
+            "builtin",
+            || Box::new(Phi4PromptBuilderHost),
+        ),
+    );
+}
+
+#[derive(Default)]
+struct Phi4PromptBuilderHost;
+
+impl PromptBuilder for Phi4PromptBuilderHost {
+    fn metadata(&self) -> PromptMetadata {
+        PromptMetadata {
+            name: "Builtin Phi4 Prompt".into(),
+            version: "0.1.0".into(),
+            description: Some("phi4-mini host prompt builder".into()),
+            supported_models: vec!["phi4-mini:3.8b".into(), "Phi-4-mini-instruct".into()],
+            homepage: None,
+            preferred_agent: PromptAgentMode::DirectProvider,
+        }
+    }
+
+    fn build(&self, ctx: PromptContext) -> PromptSpiResult<PromptPayload> {
+        let mut system = String::new();
+        if !ctx.system_directives.is_empty() {
+            for d in ctx.system_directives {
+                let src = match d.source {
+                    DirectiveSource::Host => "[host]",
+                    DirectiveSource::User => "[user]",
+                    DirectiveSource::Plugin => "[plugin]",
+                };
+                system.push_str(&format!("{} {}\n", src, d.content));
+            }
+        }
+
+        if system.trim().is_empty() {
+            system.push_str("You are a helpful assistant.");
+        }
+
+        let mut prompt = String::new();
+        prompt.push_str("<|system|>\n");
+        prompt.push_str(&system);
+        prompt.push_str("<|end|>\n\n");
+
+        for turn in ctx.conversation {
+            match turn.role {
+                ConversationRole::System => {
+                    prompt.push_str("<|system|>\n");
+                    prompt.push_str(turn.content);
+                    prompt.push_str("<|end|>\n\n");
+                }
+                ConversationRole::User => {
+                    prompt.push_str("<|user|>\n");
+                    prompt.push_str(turn.content);
+                    prompt.push_str("<|end|>\n\n");
+                }
+                ConversationRole::Assistant => {
+                    prompt.push_str("<|assistant|>\n");
+                    prompt.push_str(turn.content);
+                    prompt.push_str("<|end|>\n\n");
+                }
+                ConversationRole::Tool => {
+                    prompt.push_str("<|tool|>\n");
+                    prompt.push_str(turn.content);
+                    prompt.push_str("<|/tool|>\n\n");
+                }
+            }
+        }
+
+        // open assistant
+        prompt.push_str("<|assistant|>\n");
+
+        Ok(PromptPayload::with_prompt(prompt, PromptAgentMode::DirectProvider))
+    }
+
+    fn parse(&self, raw_output: &str) -> PromptSpiResult<PromptParseOutput> {
+        Ok(PromptParseOutput { final_answer: Some(raw_output.to_string()), tool_requests: vec![] })
+    }
 }
 
 #[derive(Default)]

@@ -1122,6 +1122,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
+name = "cli-test-runner"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chat-core",
+ "libloading",
+ "prompt-spi",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "cocoa"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1521,7 +1535,7 @@ dependencies = [
  "cssparser-macros",
  "dtoa-short",
  "itoa",
- "phf 0.10.1",
+ "phf 0.11.3",
  "smallvec",
 ]
 
@@ -2759,6 +2773,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpui-scroll-example"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-component",
+]
+
+[[package]]
 name = "gpui_collections"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3296,8 +3318,8 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
- "system-configuration 0.5.1",
+ "socket2 0.6.1",
+ "system-configuration 0.6.1",
  "tokio",
  "tower-service",
  "tracing",
@@ -4315,6 +4337,7 @@ dependencies = [
  "gpui",
  "gpui-component",
  "langchain-bridge",
+ "libloading",
  "neko-ui",
  "ollama-client",
  "prompt-spi",
@@ -4940,9 +4963,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fabbf1ead8a5bcbc20f5f8b939ee3f5b0f6f281b6ad3468b84656b658b455259"
 dependencies = [
- "phf_macros",
  "phf_shared 0.10.0",
- "proc-macro-hack",
 ]
 
 [[package]]
@@ -4951,6 +4972,7 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd6780a80ae0c52cc120a26a1a42c1ae51b247a253e4e06113d23d2c2edd078"
 dependencies = [
+ "phf_macros",
  "phf_shared 0.11.3",
 ]
 
@@ -4996,16 +5018,15 @@ dependencies = [
 
 [[package]]
 name = "phf_macros"
-version = "0.10.0"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58fdf3184dd560f160dd73922bea2d5cd6e8f064bf4b13110abd81b03697b4e0"
+checksum = "f84ac04429c13a7ff43785d75ad27569f2951ce0ffd30a3321230db2fc727216"
 dependencies = [
- "phf_generator 0.10.0",
- "phf_shared 0.10.0",
- "proc-macro-hack",
+ "phf_generator 0.11.3",
+ "phf_shared 0.11.3",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -5033,6 +5054,16 @@ dependencies = [
  "async-trait",
  "model-adapter",
  "model-provider",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "phi4-mini-prompt-builder"
+version = "0.1.0"
+dependencies = [
+ "prompt-spi",
  "serde",
  "serde_json",
  "tokio",
@@ -5222,12 +5253,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5340,7 +5365,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls 0.23.35",
- "socket2 0.5.10",
+ "socket2 0.6.1",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
@@ -5377,7 +5402,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.1",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -6202,6 +6227,14 @@ dependencies = [
  "objc-foundation",
  "objc_id",
  "once_cell",
+]
+
+[[package]]
+name = "scroll-verification"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-component",
 ]
 
 [[package]]
@@ -7585,6 +7618,7 @@ name = "ui-utils"
 version = "0.1.0"
 dependencies = [
  "gpui",
+ "gpui-component",
 ]
 
 [[package]]

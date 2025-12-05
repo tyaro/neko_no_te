@@ -24,6 +24,7 @@ ollama-client = { path = "../crates/ollama-client" }
 prompt-spi = { path = "../crates/prompt-spi" }
 chat-core = { path = "../crates/chat-core" }
 langchain-bridge = { path = "../crates/langchain-bridge" }
+libloading = "0.8"
 
 
 

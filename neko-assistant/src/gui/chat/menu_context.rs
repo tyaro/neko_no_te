@@ -35,7 +35,7 @@ impl MenuContext {
     }
 
     pub fn mcp_toggle_label(&self) -> SharedString {
-        if self.show_mcp_status {
+        if self.show_mcp_status() {
             SharedString::from("Hide MCP Status")
         } else {
             SharedString::from("Show MCP Status")
@@ -132,8 +132,7 @@ mod tests {
         assert_eq!(hide_context.mcp_toggle_label().as_ref(), "Hide MCP Status");
         assert!(hide_context.show_mcp_status());
 
-        let show_context =
-            MenuContext::new_for_testing(controller, repo_root, plugins, false);
+        let show_context = MenuContext::new_for_testing(controller, repo_root, plugins, false);
         assert_eq!(show_context.mcp_toggle_label().as_ref(), "Show MCP Status");
         assert!(!show_context.show_mcp_status());
     }

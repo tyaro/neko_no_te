@@ -4,15 +4,13 @@ use gpui_component::input::{Input, InputState};
 use gpui_component::StyledExt;
 use ui_utils::TextStyleExt;
 
+#[allow(dead_code)]
 pub fn scratchpad_window(
     editor_input: &Entity<InputState>,
     load_button: Button,
     save_button: Button,
 ) -> Div {
-    div()
-        .v_flex()
-        .gap_2()
-        .p_3()
+    div().v_flex().gap_1().p_1()
         .bg(rgb(0x161616))
         .child(
             div()

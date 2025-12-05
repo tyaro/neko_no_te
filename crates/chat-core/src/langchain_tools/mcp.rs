@@ -167,6 +167,18 @@ fn infer_primary_property(schema: &Value) -> Option<String> {
     None
 }
 
+fn render_result(value: Value) -> String {
+    match value {
+        Value::String(s) => s,
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Null => "null".to_string(),
+        Value::Array(_) | Value::Object(_) => {
+            serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -213,17 +225,5 @@ mod tests {
         let input = Value::String("search term".to_string());
         let normalized = normalize_arguments(input, &schema);
         assert_eq!(normalized, json!({"query": "search term"}));
-    }
-}
-
-fn render_result(value: Value) -> String {
-    match value {
-        Value::String(s) => s,
-        Value::Number(n) => n.to_string(),
-        Value::Bool(b) => b.to_string(),
-        Value::Null => "null".to_string(),
-        Value::Array(_) | Value::Object(_) => {
-            serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
-        }
     }
 }

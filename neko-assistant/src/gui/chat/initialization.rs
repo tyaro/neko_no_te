@@ -4,7 +4,7 @@ use super::controller_facade::ChatControllerFacade;
 use super::event_loop::ChatEventLoop;
 use chat_core::{
     load_mcp_config, ChatCommand, ChatController, ChatControllerConfig, ControllerSubscription,
-    ConversationService, McpManager, McpServerConfig, PluginEntry, PromptBuilderRegistry,
+    ConversationService, McpManager, McpServerConfig, PluginEntry, PromptBuilderRegistry, ConsoleLogKind,
 };
 use chat_history::{Conversation, ConversationManager, Message, MessageRole};
 use gpui::{Context, Window};
@@ -44,7 +44,7 @@ impl ChatViewBuilder {
             repo_root,
             plugins,
             prompt_registry,
-            config_loader: Arc::new(|| load_mcp_config()),
+            config_loader: Arc::new(load_mcp_config),
         }
     }
 
@@ -207,7 +207,7 @@ impl ChatViewBuilder {
         controller: Arc<ChatController>,
     ) {
         let input_state = state.input_state().clone();
-        let model_selector_input = state.model_selector().input_state().clone();
+        // model selector no longer exposes a free-text input; selection-only.
         let model_select_state = state.model_selector().select_state().clone();
 
         let handler_sub = controller.clone();
@@ -230,35 +230,13 @@ impl ChatViewBuilder {
                             eprintln!("Failed to send message: {}", err.message());
                         }
 
-                        let _ = field.update(cx, |view, cx| view.set_value("", window, cx));
+                        field.update(cx, |view, cx| view.set_value("", window, cx));
                     }
                 }
             },
         )];
 
-        subs.push(cx.subscribe_in(
-            &model_selector_input,
-            window,
-            move |this, field, ev: &InputEvent, window, cx| {
-                if let InputEvent::PressEnter { secondary } = ev {
-                    if *secondary {
-                        return;
-                    }
-                    let value = field.read(cx).value().trim().to_string();
-                    if value.is_empty() {
-                        return;
-                    }
-                    if let Err(err) = this.state.model_selector().switch_model(
-                        &this.controller,
-                        &value,
-                        window,
-                        cx,
-                    ) {
-                        eprintln!("Failed to switch model: {}", err);
-                    }
-                }
-            },
-        ));
+        // No text-input subscription for model selector — use the selection widget only.
 
         let select_state_for_events = model_select_state.clone();
         subs.push(cx.subscribe_in(
@@ -266,9 +244,44 @@ impl ChatViewBuilder {
             window,
             move |this, _state, event: &SelectEvent<Vec<ModelPreset>>, window, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event {
+                    // Normalize (strip trailing parenthetical label) — e.g. "gemma3n:e2b (4.5B)" -> "gemma3n:e2b"
+                    let mut normalized = value.trim().to_string();
+                    if let Some(idx) = normalized.find('(') {
+                        normalized = normalized[..idx].trim().to_string();
+                    }
+
+                    // If we have plugin metadata, ensure a plugin advertises support for this model id
+                    let plugin_match = this
+                        .plugins
+                        .iter()
+                        .any(|p| p.metadata.as_ref().map(|m| m.models.iter().any(|mid| mid == &normalized)).unwrap_or(false));
+
+                    if !plugin_match {
+                        // No adapter plugin explicitly lists this model — warn and do not switch.
+                        // (This avoids selecting a UI label that doesn't map to an installed adapter.)
+                        this.controller
+                            .controller()
+                            .append_console_log(
+                                ConsoleLogKind::Error,
+                                format!(
+                                    "No installed adapter plugin matches requested model: {}",
+                                    normalized
+                                ),
+                            );
+                        return;
+                    }
+
+                    // Log that we found a matching installed adapter and are switching
+                    this.controller
+                        .controller()
+                        .append_console_log(
+                            ConsoleLogKind::Output,
+                            format!("Plugin match found for model '{}', switching..", normalized),
+                        );
+
                     if let Err(err) = this.state.model_selector().switch_model(
                         &this.controller,
-                        value,
+                        &normalized,
                         window,
                         cx,
                     ) {

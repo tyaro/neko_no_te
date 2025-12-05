@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::path::PathBuf;
@@ -60,7 +61,7 @@ impl PromptBuilderRegistry {
         }
 
         for handles in by_model.values_mut() {
-            handles.sort_by(|a, b| b.priority().cmp(&a.priority()));
+            handles.sort_by_key(|source| Reverse(source.priority()));
         }
 
         Self { by_model }
@@ -74,7 +75,7 @@ impl PromptBuilderRegistry {
         let entry = PromptBuilderSource::Host(Arc::new(factory));
         let models = self.by_model.entry(model.into()).or_default();
         models.push(entry);
-        models.sort_by(|a, b| b.priority().cmp(&a.priority()));
+        models.sort_by_key(|source| Reverse(source.priority()));
     }
 
     pub fn resolve(&self, model: &str) -> Option<PromptBuilderSource> {

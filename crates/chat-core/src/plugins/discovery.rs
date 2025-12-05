@@ -1,4 +1,3 @@
-use crate::plugins::enabled::load_enabled_list;
 use crate::plugins::metadata::PluginEntry;
 use std::fs;
 use std::io;
@@ -10,20 +9,14 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
         .ok()
         .and_then(|p| p.parent().map(|parent| parent.join("plugins")));
 
-    let (plugins_dir, enabled_list) = if let Some(ref dir) = exe_plugins_dir {
+    let plugins_dir = if let Some(ref dir) = exe_plugins_dir {
         if dir.exists() {
-            let exe_root = dir.parent().unwrap_or_else(|| Path::new("."));
-            let enabled = load_enabled_list(exe_root).unwrap_or_default();
-            (dir.clone(), enabled)
+            dir.clone()
         } else {
-            let dir = repo_root.join("plugins");
-            let enabled = load_enabled_list(repo_root).unwrap_or_default();
-            (dir, enabled)
+            repo_root.join("plugins")
         }
     } else {
-        let dir = repo_root.join("plugins");
-        let enabled = load_enabled_list(repo_root).unwrap_or_default();
-        (dir, enabled)
+        repo_root.join("plugins")
     };
 
     let mut entries = vec![];
@@ -40,7 +33,11 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
                 .and_then(|s| s.to_str())
                 .unwrap_or("")
                 .to_string();
-            let enabled = enabled_list.contains(&dir_name);
+            // Determine whether the plugin should be treated as enabled.
+            // Historically we used an `enabled.json` file, but that
+            // management step is unnecessary: load a plugin when a
+            // platform shared library exists in the plugin directory.
+            let enabled = plugin_has_shared_library(&path);
 
             let plugin_toml = path.join("plugin.toml");
             let metadata = if plugin_toml.exists() {
@@ -68,4 +65,22 @@ pub fn discover_plugins(repo_root: &Path) -> io::Result<Vec<PluginEntry>> {
     }
 
     Ok(entries)
+}
+
+/// Check plugin directory for a platform dynamic library (dll/so/dylib).
+fn plugin_has_shared_library(path: &Path) -> bool {
+    if let Ok(rd) = fs::read_dir(path) {
+        for ent in rd.flatten() {
+            let p = ent.path();
+            if p.is_file() {
+                if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
+                    match ext.to_lowercase().as_str() {
+                        "dll" | "so" | "dylib" => return true,
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    false
 }

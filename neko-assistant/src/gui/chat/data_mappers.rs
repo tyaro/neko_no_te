@@ -1,5 +1,5 @@
 use chat_core::{ChatState, McpServerStatus};
-use chat_history::MessageRole;
+use chat_history::{Message, MessageRole};
 use neko_ui::{
     ChatMessageRow, ConsoleLogEntry, McpServerItem, McpServerStatusBadge, McpToolItem, MessageType,
 };
@@ -20,6 +20,8 @@ impl ChatStateMapper {
                     MessageRole::Error => MessageType::Error,
                 },
                 align_end: matches!(msg.role, MessageRole::User),
+                is_thinking: is_thinking_message(msg),
+                source_label: message_source_label(msg),
             })
             .collect()
     }
@@ -70,4 +72,35 @@ impl ChatStateMapper {
             })
             .collect()
     }
+}
+
+fn is_thinking_message(message: &Message) -> bool {
+    message
+        .metadata
+        .as_ref()
+        .and_then(|meta| meta.get("thinking"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+}
+
+fn message_source_label(message: &Message) -> Option<String> {
+    let metadata = message.metadata.as_ref()?;
+    let source = metadata.get("source")?.as_str()?;
+
+    if source != "mcp" {
+        return None;
+    }
+
+    let origin = metadata
+        .get("origin")
+        .and_then(|value| value.as_str())
+        .unwrap_or("");
+
+    let label = match origin {
+        "prompt_builder" => "MCP (Prompt Builder)",
+        "langchain_chat" => "MCP (LangChain)",
+        _ => "MCP",
+    };
+
+    Some(label.to_string())
 }

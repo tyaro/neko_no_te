@@ -28,6 +28,10 @@ impl ScratchpadManager {
         }
     }
 
+    pub fn editor_input(&self) -> &Entity<InputState> {
+        &self.editor_input
+    }
+
     pub fn load(
         &self,
         window: &mut Window,
@@ -35,7 +39,7 @@ impl ScratchpadManager {
     ) -> Result<(), String> {
         match fs::read_to_string(&self.file_path) {
             Ok(content) => {
-                let _ = self.editor_input.update(cx, |state, cx| {
+                self.editor_input.update(cx, |state, cx| {
                     state.set_value(&content, window, cx);
                 });
                 cx.notify();
@@ -54,6 +58,7 @@ impl ScratchpadManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn save(&self, cx: &mut Context<super::ChatView>) -> Result<(), String> {
         let contents = self.editor_input.read(cx).value();
         fs::write(&self.file_path, contents.as_str()).map_err(|err| {
@@ -65,6 +70,7 @@ impl ScratchpadManager {
         })
     }
 
+    #[allow(dead_code)]
     pub fn open_sheet(
         &self,
         view: gpui::Entity<super::ChatView>,
@@ -82,7 +88,7 @@ impl ScratchpadManager {
         let manager_for_load = Arc::new(self.clone());
         let manager_for_save = Arc::new(self.clone());
 
-        let _ = window.open_sheet(cx, move |sheet, window, _app| {
+        window.open_sheet(cx, move |sheet, window, _app| {
             let load_manager = manager_for_load.clone();
             let load_listener = window.listener_for(
                 &view_for_load,

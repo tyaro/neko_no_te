@@ -70,6 +70,12 @@ impl Phi4MiniAdapter {
     }
 }
 
+impl Default for Phi4MiniAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ModelAdapter for Phi4MiniAdapter {
     fn adapter_name(&self) -> &str {

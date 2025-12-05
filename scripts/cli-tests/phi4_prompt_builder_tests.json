@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "model": "phi4-mini:3.8b",
+      "conversation": [
+        {"role": "user", "content": "次の入力を日本語で要約して下さい: 猫は窓辺で寝ている。"}
+      ],
+      "locale": "ja-JP",
+      "expected_prompt_contains": "<|assistant|>",
+      "expected_prompt_regex": "<\\|assistant\\|>",
+      "expected_prompt_regex_flags": "",
+      "expected_agent_mode": "DirectProvider"
+    },
+    {
+      "model": "phi4-mini:3.8b",
+      "conversation": [
+        {"role": "system", "content": "You are a concise assistant."},
+        {"role": "user", "content": "ファイルを読み込み、結果を整理してください。"}
+      ],
+      "expected_prompt_contains": "You are a concise assistant",
+      "expected_prompt_regex": "you are a concise assistant",
+      "expected_prompt_regex_flags": "i",
+      "expected_agent_mode": "DirectProvider"
+    }
+  ]
+}

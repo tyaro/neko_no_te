@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chat_core::{disable_plugin, discover_plugins, enable_plugin};
 use langchain_bridge::LangChainToolAgent;
@@ -65,6 +65,32 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
+    /// Manage stored tokens (sqlite-backed in app-config)
+    Token {
+        #[command(subcommand)]
+        action: TokenAction,
+    },
+    /// Run the external research CLI test runner (thin wrapper)
+    CliTest {
+        /// Path to test script JSON file
+        #[arg(short, long)]
+        script: std::path::PathBuf,
+        /// Optionally run discovery from the workspace target/debug/plugins directory
+        #[arg(long)]
+        use_target_plugins: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum TokenAction {
+    /// set a token for a service and name
+    Add { service: String, name: String, value: String },
+    /// get a token value (prints value; careful!)
+    Get { service: String, name: String },
+    /// list stored token keys
+    List,
+    /// remove a token
+    Remove { service: String, name: String },
 }
 
 async fn test_mcp() -> anyhow::Result<()> {
@@ -107,7 +133,7 @@ async fn test_mcp() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn chat_cli(
+struct ChatCliConfig<'a> {
     prompt: String,
     model: String,
     enable_mcp: bool,
@@ -115,8 +141,20 @@ async fn chat_cli(
     format: String,
     verbose: bool,
     debug: bool,
-    repo: &PathBuf,
-) -> anyhow::Result<()> {
+    repo: &'a Path,
+}
+
+async fn chat_cli(config: ChatCliConfig<'_>) -> anyhow::Result<()> {
+    let ChatCliConfig {
+        prompt,
+        model,
+        enable_mcp,
+        enable_plugins,
+        format,
+        verbose,
+        debug,
+        repo,
+    } = config;
     use chat_core::{langchain_tools::build_mcp_tools, load_mcp_config, McpManager};
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
@@ -377,6 +415,45 @@ async fn main() -> anyhow::Result<()> {
                 println!("Testing MCP connection...");
                 test_mcp().await?;
             }
+
+            Some(Commands::Token { action }) => {
+                // token management: delegates to app-config DB
+                match action {
+                    TokenAction::Add { service, name, value } => {
+                        match app_config::set_token(&service, &name, &value) {
+                            Ok(()) => println!("Token stored for {}/{}", service, name),
+                            Err(e) => eprintln!("Failed to store token: {}", e),
+                        }
+                    }
+                    TokenAction::Get { service, name } => {
+                        match app_config::get_token(&service, &name) {
+                            Ok(Some(val)) => println!("{} {}/{} = {}", "TOKEN", service, name, val),
+                            Ok(None) => println!("no token for {}/{}", service, name),
+                            Err(e) => eprintln!("failed to read token: {}", e),
+                        }
+                    }
+                    TokenAction::List => {
+                        match app_config::list_tokens() {
+                            Ok(list) => {
+                                if list.is_empty() {
+                                    println!("no stored tokens");
+                                } else {
+                                    println!("Stored tokens:");
+                                    for (svc, name, c, u) in list { println!("- {}/{} (created={}, updated={})", svc, name, c, u); }
+                                }
+                            }
+                            Err(e) => eprintln!("failed to list tokens: {}", e),
+                        }
+                    }
+                    TokenAction::Remove { service, name } => {
+                        match app_config::delete_token(&service, &name) {
+                            Ok(true) => println!("deleted token {}/{}", service, name),
+                            Ok(false) => println!("no token {}/{} to delete", service, name),
+                            Err(e) => eprintln!("failed to delete token: {}", e),
+                        }
+                    }
+                }
+            }
             // Some(Commands::VerifyWeather { city, model }) => {
             //     println!("Running phi4-mini weather verification...");
             //     verify_weather(city, model).await?;
@@ -390,18 +467,56 @@ async fn main() -> anyhow::Result<()> {
                 verbose,
                 debug,
             }) => {
-                chat_cli(
+                let cli_config = ChatCliConfig {
                     prompt,
                     model,
-                    !no_mcp,
-                    !no_plugins,
+                    enable_mcp: !no_mcp,
+                    enable_plugins: !no_plugins,
                     format,
                     verbose,
                     debug,
-                    &repo,
-                )
-                .await?;
+                    repo: &repo,
+                };
+                chat_cli(cli_config).await?;
             }
+            Some(Commands::CliTest { script, use_target_plugins }) => {
+                // Thin wrapper: try to run a built research/cli-test-runner binary first,
+                // otherwise fall back to `cargo run -p cli-test-runner`.
+                let exe_name = if cfg!(windows) { "cli-test-runner.exe" } else { "cli-test-runner" };
+                let bin_path = repo.join("research").join("cli-test-runner").join("target").join("debug").join(exe_name);
+
+                let status = if bin_path.exists() {
+                    std::process::Command::new(bin_path)
+                        .arg(&script)
+                        .args(if use_target_plugins { vec!["--use-target-plugins"] } else { vec![] })
+                        .status()
+                } else {
+                    let mut cmd = std::process::Command::new("cargo");
+                    cmd.current_dir(&repo)
+                        .arg("run")
+                        .arg("-p")
+                        .arg("cli-test-runner")
+                        .arg("--")
+                        .arg(&script);
+                    if use_target_plugins {
+                        cmd.arg("--use-target-plugins");
+                    }
+                    cmd.status()
+                };
+
+                match status {
+                    Ok(s) if s.success() => { /* success */ }
+                    Ok(s) => {
+                        eprintln!("cli-test-runner exited with status {}", s);
+                        std::process::exit(s.code().unwrap_or(2));
+                    }
+                    Err(e) => {
+                        eprintln!("failed to launch cli-test-runner: {}", e);
+                        std::process::exit(2);
+                    }
+                }
+            }
+
             None => {
                 // No subcommand and --cli provided: show help-ish message
                 println!("No command specified. Use --help for usage.");

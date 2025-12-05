@@ -32,7 +32,8 @@ pub fn extract_metadata(value: &toml::Value) -> PluginMetadata {
         .and_then(|v| v.as_str())
         .map(|s| match s {
             "prompt_builder" => PluginKind::PromptBuilder,
-            "adapter" | _ => PluginKind::Adapter,
+            "adapter" => PluginKind::Adapter,
+            _ => PluginKind::Adapter,
         })
         .unwrap_or_default();
 

@@ -14,19 +14,14 @@ pub struct PluginMetadata {
     pub priority: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PluginKind {
+    #[default]
     Adapter,
     PromptBuilder,
     #[serde(other)]
     Other,
-}
-
-impl Default for PluginKind {
-    fn default() -> Self {
-        PluginKind::Adapter
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

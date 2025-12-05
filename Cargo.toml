@@ -13,10 +13,14 @@ members = [
     "crates/plugins/llama3-adapter",
     "crates/plugins/gemma3-adapter",
     "crates/plugins/qwen3-adapter",
+    "crates/plugins/phi4-mini-prompt-builder",
     "crates/ui-utils",
     "crates/neko-ui",
     "crates/prompt-spi",
     "research/mcp-weather-server",
+    "research/gpui-scroll-example",
+    "research/scroll-verification",
+    "research/cli-test-runner",
 ]
 
 resolver = "2"

@@ -53,6 +53,7 @@ temp/
 # Typically located at ~/.neko-assistant/ or %USERPROFILE%\.neko-assistant\
 .neko-assistant/
 **/.neko-assistant/
+**/neko_assistant_settings.db
 **/*.d
 **/*.o
 **/incremental/

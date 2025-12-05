@@ -1,5 +1,4 @@
 use gpui::*;
-use gpui_component::input::{Input, InputState};
 use gpui_component::select::{Select, SelectItem, SelectState};
 use gpui_component::StyledExt;
 
@@ -35,20 +34,13 @@ impl SelectItem for ModelPreset {
     }
 }
 
-pub fn model_selector(
-    select_state: &gpui::Entity<SelectState<Vec<ModelPreset>>>,
-    input: &gpui::Entity<InputState>,
-) -> impl IntoElement {
+pub fn model_selector(select_state: &gpui::Entity<SelectState<Vec<ModelPreset>>>,) -> impl IntoElement {
     let preset_select = Select::new(select_state)
         .placeholder("Select model...")
         .menu_width(px(320.0))
         .w(px(240.0))
         .cleanable(true);
 
-    div()
-        .h_flex()
-        .gap_1()
-        .items_center()
-        .child(preset_select)
-        .child(Input::new(input).w(px(220.0)).text_sm())
+    // Only render the selector — avoid duplicating the model id display.
+    div().h_flex().gap_1().items_center().child(preset_select)
 }

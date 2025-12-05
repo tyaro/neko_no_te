@@ -10,15 +10,19 @@ use prompt_spi::{
     DirectiveSource as SpiDirectiveSource, PromptAgentMode, PromptContext as SpiPromptContext,
     PromptPayload, SystemDirective as SpiSystemDirective, ToolInvocation, ToolSpec as SpiToolSpec,
 };
-use serde_json;
+use serde_json::{self, json};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, Mutex as AsyncMutex};
 
 use crate::ConversationService;
 
+type RefreshCallback = Arc<dyn Fn() + Send + Sync>;
+type ConsoleLogger = Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>;
+
 const DEFAULT_LOCALE: &str = "ja-JP";
 const HOST_DIRECTIVE: &str =
     "回答は自然な日本語で丁寧にまとめてください。必要に応じて MCP ツールの結果も含めてください。";
+const THINKING_PLACEHOLDER: &str = "Thinking...";
 
 /// メッセージ処理ハンドラー
 /// UIから独立して、メッセージの送受信とLLM呼び出しを管理
@@ -31,8 +35,8 @@ pub struct MessageHandler {
     mcp_manager: Option<Arc<McpManager>>,
     langchain_agent: Arc<AsyncMutex<Option<LangChainToolAgent>>>,
     prompt_registry: Option<Arc<PromptBuilderRegistry>>,
-    mcp_refresh_callback: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
-    console_logger: Mutex<Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>>>,
+    mcp_refresh_callback: Mutex<Option<RefreshCallback>>,
+    console_logger: Mutex<Option<ConsoleLogger>>,
 }
 
 impl MessageHandler {
@@ -99,10 +103,11 @@ impl MessageHandler {
         let console_logger = self.console_logger();
 
         if needs_async {
-            if let Err(err) = self
-                .conversation_service
-                .append_message(MessageRole::System, "Thinking...".to_string())
-            {
+            if let Err(err) = self.conversation_service.append_message_with_metadata(
+                MessageRole::System,
+                THINKING_PLACEHOLDER,
+                thinking_metadata(),
+            ) {
                 eprintln!("Failed to append thinking message: {}", err);
             }
             let _ = self.ui_update_tx.send(()); // UI更新通知
@@ -119,22 +124,31 @@ impl MessageHandler {
             let console_logger_clone = console_logger.clone();
 
             tokio::spawn(async move {
+                let session_config = PromptBuilderSessionConfig {
+                    ollama_url: ollama_url.clone(),
+                    manager,
+                    agent_slot,
+                    refresh_callback: refresh_hook_clone,
+                    console_logger: console_logger_clone,
+                };
                 match run_prompt_builder_session(
                     builder_source,
                     service_bg.clone(),
                     model_name,
-                    ollama_url.clone(),
-                    manager,
-                    agent_slot,
-                    refresh_hook_clone,
-                    console_logger_clone,
+                    session_config,
                 )
                 .await
                 {
-                    Ok(response) => {
-                        if let Err(err) =
-                            finalize_response(&service_bg, MessageRole::Assistant, response)
-                        {
+                    Ok(result) => {
+                        let metadata = result
+                            .used_mcp
+                            .then(|| mcp_response_metadata("prompt_builder"));
+                        if let Err(err) = finalize_response(
+                            &service_bg,
+                            MessageRole::Assistant,
+                            result.response,
+                            metadata,
+                        ) {
                             eprintln!("Failed to record assistant response: {}", err);
                         }
                     }
@@ -143,6 +157,7 @@ impl MessageHandler {
                             &service_bg,
                             MessageRole::Error,
                             format!("Error: {}", e),
+                            None,
                         ) {
                             eprintln!("Failed to record error response: {}", err);
                         }
@@ -200,9 +215,12 @@ impl MessageHandler {
                                 ConsoleLogKind::Output,
                                 response.clone(),
                             );
-                            if let Err(err) =
-                                finalize_response(&service_bg, MessageRole::Assistant, response)
-                            {
+                            if let Err(err) = finalize_response(
+                                &service_bg,
+                                MessageRole::Assistant,
+                                response,
+                                Some(mcp_response_metadata("langchain_chat")),
+                            ) {
                                 eprintln!("Failed to record assistant response: {}", err);
                             }
                         }
@@ -216,6 +234,7 @@ impl MessageHandler {
                                 &service_bg,
                                 MessageRole::Error,
                                 format!("Error: {}", e),
+                                None,
                             ) {
                                 eprintln!("Failed to record error response: {}", err);
                             }
@@ -235,9 +254,12 @@ impl MessageHandler {
                                 ConsoleLogKind::Output,
                                 response.clone(),
                             );
-                            if let Err(err) =
-                                finalize_response(&service_bg, MessageRole::Assistant, response)
-                            {
+                            if let Err(err) = finalize_response(
+                                &service_bg,
+                                MessageRole::Assistant,
+                                response,
+                                None,
+                            ) {
                                 eprintln!("Failed to record assistant response: {}", err);
                             }
                         }
@@ -251,6 +273,7 @@ impl MessageHandler {
                                 &service_bg,
                                 MessageRole::Error,
                                 format!("Error: {}", e),
+                                None,
                             ) {
                                 eprintln!("Failed to record error response: {}", err);
                             }
@@ -307,7 +330,7 @@ impl MessageHandler {
         Ok(())
     }
 
-    pub fn set_mcp_refresh_callback(&self, callback: Option<Arc<dyn Fn() + Send + Sync>>) {
+    pub fn set_mcp_refresh_callback(&self, callback: Option<RefreshCallback>) {
         {
             let mut guard = self
                 .mcp_refresh_callback
@@ -319,23 +342,20 @@ impl MessageHandler {
         self.reinitialize_langchain_agent();
     }
 
-    pub fn set_console_logger(
-        &self,
-        callback: Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>>,
-    ) {
+    pub fn set_console_logger(&self, callback: Option<ConsoleLogger>) {
         if let Ok(mut guard) = self.console_logger.lock() {
             *guard = callback;
         }
     }
 
-    fn console_logger(&self) -> Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>> {
+    fn console_logger(&self) -> Option<ConsoleLogger> {
         self.console_logger
             .lock()
             .ok()
             .and_then(|guard| guard.as_ref().map(Arc::clone))
     }
 
-    fn tool_refresh_callback(&self) -> Option<Arc<dyn Fn() + Send + Sync>> {
+    fn tool_refresh_callback(&self) -> Option<RefreshCallback> {
         self.mcp_refresh_callback
             .lock()
             .ok()
@@ -389,16 +409,37 @@ impl MessageHandler {
     }
 }
 
+struct PromptBuilderSessionConfig {
+    ollama_url: String,
+    manager: Option<Arc<McpManager>>,
+    agent_slot: Arc<AsyncMutex<Option<LangChainToolAgent>>>,
+    refresh_callback: Option<RefreshCallback>,
+    console_logger: Option<ConsoleLogger>,
+}
+
+struct PromptSessionResult {
+    response: String,
+    used_mcp: bool,
+}
+
+struct GeneratedResponse {
+    text: String,
+    used_mcp: bool,
+}
+
 async fn run_prompt_builder_session(
     source: PromptBuilderSource,
     service: ConversationService,
     model_name: String,
-    ollama_url: String,
-    manager: Option<Arc<McpManager>>,
-    agent_slot: Arc<AsyncMutex<Option<LangChainToolAgent>>>,
-    refresh_callback: Option<Arc<dyn Fn() + Send + Sync>>,
-    console_logger: Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>>,
-) -> Result<String, String> {
+    config: PromptBuilderSessionConfig,
+) -> Result<PromptSessionResult, String> {
+    let PromptBuilderSessionConfig {
+        ollama_url,
+        manager,
+        agent_slot,
+        refresh_callback,
+        console_logger,
+    } = config;
     let builder = source.create_builder();
 
     let tool_specs = collect_tool_specs(manager.clone()).await?;
@@ -443,9 +484,11 @@ async fn run_prompt_builder_session(
         .build(context)
         .map_err(|e| format!("Prompt build error: {}", e))?;
 
+    let mut used_mcp = false;
+
     let raw_output = match payload.agent_mode {
         PromptAgentMode::LangChain => {
-            execute_with_langchain(
+            let response = execute_with_langchain(
                 &payload,
                 agent_slot.clone(),
                 manager.clone(),
@@ -454,11 +497,16 @@ async fn run_prompt_builder_session(
                 refresh_callback.clone(),
                 console_logger.clone(),
             )
-            .await?
+            .await?;
+            used_mcp |= response.used_mcp;
+            response.text
         }
         PromptAgentMode::DirectProvider => {
-            execute_direct_provider(&payload, &ollama_url, &model_name, console_logger.clone())
-                .await?
+            let response =
+                execute_direct_provider(&payload, &ollama_url, &model_name, console_logger.clone())
+                    .await?;
+            used_mcp |= response.used_mcp;
+            response.text
         }
     };
 
@@ -473,28 +521,44 @@ async fn run_prompt_builder_session(
             refresh_callback.clone(),
         )
         .await?;
+        used_mcp = true;
         if let Some(answer) = parsed.final_answer {
             if answer.trim().is_empty() {
-                return Ok(tool_text);
+                return Ok(PromptSessionResult {
+                    response: tool_text,
+                    used_mcp,
+                });
             }
-            return Ok(format!("{}\n\n{}", answer.trim(), tool_text));
+            return Ok(PromptSessionResult {
+                response: format!("{}\n\n{}", answer.trim(), tool_text),
+                used_mcp,
+            });
         }
-        return Ok(tool_text);
+        return Ok(PromptSessionResult {
+            response: tool_text,
+            used_mcp,
+        });
     }
 
     if let Some(answer) = parsed.final_answer {
-        return Ok(answer);
+        return Ok(PromptSessionResult {
+            response: answer,
+            used_mcp,
+        });
     }
 
-    Ok(raw_output)
+    Ok(PromptSessionResult {
+        response: raw_output,
+        used_mcp,
+    })
 }
 
 async fn execute_direct_provider(
     payload: &PromptPayload,
     ollama_url: &str,
     model_name: &str,
-    console_logger: Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>>,
-) -> Result<String, String> {
+    console_logger: Option<ConsoleLogger>,
+) -> Result<GeneratedResponse, String> {
     let prompt_text = extract_prompt(payload)?;
     emit_console_log(
         &console_logger,
@@ -507,7 +571,10 @@ async fn execute_direct_provider(
     match provider.generate(model_name, &prompt_text).await {
         Ok(result) => {
             emit_console_log(&console_logger, ConsoleLogKind::Output, result.text.clone());
-            Ok(result.text)
+            Ok(GeneratedResponse {
+                text: result.text,
+                used_mcp: false,
+            })
         }
         Err(e) => {
             emit_console_log(
@@ -526,9 +593,9 @@ async fn execute_with_langchain(
     manager: Option<Arc<McpManager>>,
     model_name: String,
     ollama_url: String,
-    refresh_callback: Option<Arc<dyn Fn() + Send + Sync>>,
-    console_logger: Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>>,
-) -> Result<String, String> {
+    refresh_callback: Option<RefreshCallback>,
+    console_logger: Option<ConsoleLogger>,
+) -> Result<GeneratedResponse, String> {
     let prompt_text = extract_prompt(payload)?;
     emit_console_log(
         &console_logger,
@@ -548,7 +615,10 @@ async fn execute_with_langchain(
             Ok(agent) => match agent.invoke(&prompt_text).await {
                 Ok(response) => {
                     emit_console_log(&console_logger, ConsoleLogKind::Output, response.clone());
-                    return Ok(response);
+                    return Ok(GeneratedResponse {
+                        text: response,
+                        used_mcp: true,
+                    });
                 }
                 Err(e) => {
                     emit_console_log(
@@ -569,7 +639,10 @@ async fn execute_with_langchain(
     match engine.send_message_simple(&prompt_text).await {
         Ok(response) => {
             emit_console_log(&console_logger, ConsoleLogKind::Output, response.clone());
-            Ok(response)
+            Ok(GeneratedResponse {
+                text: response,
+                used_mcp: false,
+            })
         }
         Err(e) => {
             emit_console_log(
@@ -602,7 +675,7 @@ async fn collect_tool_specs(manager: Option<Arc<McpManager>>) -> Result<Vec<SpiT
 async fn fulfill_prompt_builder_tools(
     requests: Vec<ToolInvocation>,
     manager: Option<Arc<McpManager>>,
-    refresh_callback: Option<Arc<dyn Fn() + Send + Sync>>,
+    refresh_callback: Option<RefreshCallback>,
 ) -> Result<String, String> {
     let manager = manager.ok_or_else(|| {
         "Prompt builder requested tool calls, but no MCP servers are configured".to_string()
@@ -656,13 +729,12 @@ fn split_tool_identifier(identifier: &str) -> Result<(String, String), String> {
 fn extract_prompt(payload: &PromptPayload) -> Result<String, String> {
     payload
         .prompt
-        .as_ref()
-        .map(|text| text.clone())
+        .clone()
         .ok_or_else(|| "Prompt builder did not provide a prompt payload".to_string())
 }
 
 fn should_skip_placeholder(message: &Message) -> bool {
-    matches!(message.role, MessageRole::System) && message.content == "Thinking..."
+    is_thinking_message(message)
 }
 
 fn map_message_role(role: MessageRole) -> Option<SpiConversationRole> {
@@ -678,11 +750,36 @@ fn finalize_response(
     service: &ConversationService,
     role: MessageRole,
     content: String,
+    metadata: Option<serde_json::Value>,
 ) -> chat_history::Result<()> {
-    service.pop_last_if(|msg| {
-        matches!(msg.role, MessageRole::System) && msg.content == "Thinking..."
-    })?;
-    service.append_message(role, content)
+    service.pop_last_if(|msg| is_thinking_message(msg))?;
+    if let Some(metadata) = metadata {
+        service.append_message_with_metadata(role, content, metadata)
+    } else {
+        service.append_message(role, content)
+    }
+}
+
+fn thinking_metadata() -> serde_json::Value {
+    json!({ "thinking": true })
+}
+
+fn is_thinking_message(message: &Message) -> bool {
+    if let Some(metadata) = message.metadata.as_ref() {
+        metadata
+            .get("thinking")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
+    } else {
+        matches!(message.role, MessageRole::System) && message.content == THINKING_PLACEHOLDER
+    }
+}
+
+fn mcp_response_metadata(origin: &str) -> serde_json::Value {
+    json!({
+        "source": "mcp",
+        "origin": origin,
+    })
 }
 
 fn derive_title(source: &str) -> String {
@@ -703,7 +800,7 @@ async fn ensure_tool_agent(
     slot: Arc<AsyncMutex<Option<LangChainToolAgent>>>,
     manager: Arc<McpManager>,
     model: String,
-    refresh_callback: Option<Arc<dyn Fn() + Send + Sync>>,
+    refresh_callback: Option<RefreshCallback>,
 ) -> Result<LangChainToolAgent, String> {
     {
         let guard = slot.lock().await;
@@ -731,7 +828,7 @@ fn snapshot_model(state: &Arc<Mutex<String>>) -> String {
 }
 
 fn emit_console_log(
-    logger: &Option<Arc<dyn Fn(ConsoleLogRecord) + Send + Sync>>,
+    logger: &Option<ConsoleLogger>,
     kind: ConsoleLogKind,
     content: impl Into<String>,
 ) {

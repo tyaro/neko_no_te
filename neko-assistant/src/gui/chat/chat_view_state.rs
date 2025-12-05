@@ -14,6 +14,9 @@ pub struct ChatViewState {
     input_state: Entity<InputState>,
     scratchpad: ScratchpadManager,
     scroll_manager: ScrollManager,
+    show_scratchpad: bool,
+    show_console: bool,
+    show_chat_panel: bool,
     show_mcp_status: bool,
     _subscriptions: Vec<Subscription>,
 }
@@ -45,12 +48,18 @@ impl ChatViewState {
                 .placeholder("Notes / prompt scratchpad...")
         });
         let scratchpad = ScratchpadManager::new(repo_root, editor_input.clone());
+        if let Err(err) = scratchpad.load(window, cx) {
+            eprintln!("Failed to load scratchpad on startup: {}", err);
+        }
 
         Self {
             model_selector,
             input_state,
             scratchpad,
             scroll_manager: ScrollManager::new(),
+            show_scratchpad: true,
+            show_console: true,
+            show_chat_panel: true,
             show_mcp_status: false,
             _subscriptions: Vec::new(),
         }
@@ -68,12 +77,15 @@ impl ChatViewState {
         &self.scratchpad
     }
 
-    pub fn scroll_manager(&self) -> &ScrollManager {
-        &self.scroll_manager
-    }
+    // scroll_manager getter removed; prefer explicit mutable access via scroll_manager_mut()
 
     pub fn scroll_manager_mut(&mut self) -> &mut ScrollManager {
         &mut self.scroll_manager
+    }
+
+    /// Access the internal scroll handle for read-only tracking (avoid mutable borrows).
+    pub fn scroll_handle(&self) -> &gpui::ScrollHandle {
+        self.scroll_manager.handle()
     }
 
     pub fn mark_scroll_to_bottom(&mut self) {
@@ -86,6 +98,30 @@ impl ChatViewState {
 
     pub fn toggle_mcp_status(&mut self) {
         self.show_mcp_status = !self.show_mcp_status;
+    }
+
+    pub fn show_scratchpad(&self) -> bool {
+        self.show_scratchpad
+    }
+
+    pub fn toggle_scratchpad(&mut self) {
+        self.show_scratchpad = !self.show_scratchpad;
+    }
+
+    pub fn show_console(&self) -> bool {
+        self.show_console
+    }
+
+    pub fn toggle_console(&mut self) {
+        self.show_console = !self.show_console;
+    }
+
+    pub fn show_chat_panel(&self) -> bool {
+        self.show_chat_panel
+    }
+
+    pub fn toggle_chat_panel(&mut self) {
+        self.show_chat_panel = !self.show_chat_panel;
     }
 
     pub fn set_subscriptions(&mut self, subs: Vec<Subscription>) {

@@ -1,6 +1,7 @@
 use super::chat_view::{describe_agent_mode, ChatView};
 use chat_core::PromptBuilderRegistry;
 
+#[allow(dead_code)]
 pub(super) struct ToolbarViewModel {
     builder_status: String,
     show_mcp_status: bool,
@@ -16,10 +17,12 @@ impl ToolbarViewModel {
         )
     }
 
+    #[allow(dead_code)]
     pub fn builder_status(&self) -> &str {
         &self.builder_status
     }
 
+    #[allow(dead_code)]
     pub fn mcp_toggle_label(&self) -> &'static str {
         if self.show_mcp_status {
             "Hide MCP"

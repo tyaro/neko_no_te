@@ -49,15 +49,12 @@ impl McpManagerView {
     }
 
     fn set_form(&mut self, window: &mut Window, cx: &mut Context<Self>, cfg: &McpServerConfig) {
-        let _ = self
-            .name_input
+        self.name_input
             .update(cx, |state, cx| state.set_value(&cfg.name, window, cx));
-        let _ = self
-            .command_input
+        self.command_input
             .update(cx, |state, cx| state.set_value(&cfg.command, window, cx));
         let args_value = cfg.args.join(", ");
-        let _ = self
-            .args_input
+        self.args_input
             .update(cx, |state, cx| state.set_value(&args_value, window, cx));
         let env_text = cfg
             .env
@@ -69,8 +66,7 @@ impl McpManagerView {
                     .join("\n")
             })
             .unwrap_or_default();
-        let _ = self
-            .env_input
+        self.env_input
             .update(cx, |state, cx| state.set_value(&env_text, window, cx));
     }
 
@@ -81,7 +77,7 @@ impl McpManagerView {
             &self.args_input,
             &self.env_input,
         ] {
-            let _ = input.update(cx, |state, cx| state.set_value("", window, cx));
+            input.update(cx, |state, cx| state.set_value("", window, cx));
         }
         *self.selected.borrow_mut() = None;
     }
@@ -103,7 +99,7 @@ impl McpManagerView {
 
         let args_field = self.args_input.read(cx).value();
         let args = args_field
-            .split(|c| c == '\n' || c == ',')
+            .split(['\n', ','])
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .map(|s| s.to_string())
@@ -217,22 +213,22 @@ impl Render for McpManagerView {
                 let mut col = div().v_flex().gap_2();
                 for (idx, cfg) in list.iter().enumerate() {
                     let name = cfg.name.clone();
+                    let edit_idx = idx;
                     let edit_listener = cx.listener({
-                        let idx = idx;
                         move |this: &mut Self,
                               _ev: &ClickEvent,
                               window: &mut Window,
                               cx: &mut Context<Self>| {
-                            this.edit_entry(idx, window, cx);
+                            this.edit_entry(edit_idx, window, cx);
                         }
                     });
+                    let remove_idx = idx;
                     let remove_listener = cx.listener({
-                        let idx = idx;
                         move |this: &mut Self,
                               _ev: &ClickEvent,
                               _window: &mut Window,
                               _cx: &mut Context<Self>| {
-                            this.remove_entry(idx);
+                            this.remove_entry(remove_idx);
                         }
                     });
                     col = col.child(

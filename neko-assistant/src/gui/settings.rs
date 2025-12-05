@@ -35,7 +35,8 @@ impl SettingsView {
 
         let max_history_input = cx.new(|cx| {
             let mut state = InputState::new(window, cx);
-            state.set_value(&config.max_history_messages.to_string(), window, cx);
+            let history_value = config.max_history_messages.to_string();
+            state.set_value(&history_value, window, cx);
             state
         });
 

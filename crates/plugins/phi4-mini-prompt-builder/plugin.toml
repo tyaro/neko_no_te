@@ -1,0 +1,12 @@
+name = "phi4-mini-prompt-builder"
+version = "0.1.0"
+author = "tyaro <maintainers@neko-no-te.local>"
+description = "PromptBuilder plugin for Phi-4-mini-instruct (formats <|system|>/<|user|>/<|assistant|> and tool blocks)"
+kind = "prompt_builder"
+models = ["phi4-mini:3.8b", "Phi-4-mini-instruct"]
+# Platform-specific dynamic library filename produced by cargo - use underscore style
+# Windows: phi4_mini_prompt_builder.dll, Linux: libphi4_mini_prompt_builder.so
+library = "phi4_mini_prompt_builder.dll"
+# Optional explicit entrypoint name (default: create_prompt_builder)
+entrypoint = "create_prompt_builder"
+priority = 50

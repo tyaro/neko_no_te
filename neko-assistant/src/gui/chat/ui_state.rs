@@ -4,6 +4,7 @@ use neko_ui::{ChatMessageRow, ChatSidebarItem, ConsoleLogEntry, McpServerItem, M
 
 #[derive(Clone)]
 pub struct ChatUiSnapshot {
+    #[allow(dead_code)]
     pub sidebar_items: Vec<ChatSidebarItem>,
     pub server_items: Vec<McpServerItem>,
     pub tool_items: Vec<McpToolItem>,

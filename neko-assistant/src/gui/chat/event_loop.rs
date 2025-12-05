@@ -76,10 +76,6 @@ impl ChatEventBatch {
 
         if plan.sync_active_model {
             let state = view.chat_state_snapshot();
-            let active_model = state.active_model.clone();
-            view.state
-                .model_selector()
-                .update_input_value(&active_model, window, cx);
             view.state
                 .model_selector()
                 .sync_selection(&state, window, cx);

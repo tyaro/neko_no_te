@@ -1,22 +1,30 @@
 use gpui::*;
+use gpui::prelude::FluentBuilder;
+use gpui_component::scroll::ScrollableElement;
 
 use crate::chat_message_list::{chat_message_list, ChatMessageRow};
 
-fn with_overflow_y_scroll(mut node: Stateful<Div>) -> Stateful<Div> {
-    node.style().overflow.y = Some(Overflow::Scroll);
-    node
-}
-
-/// スクロール付きのチャットメッセージパネル
+/// スクロール付きのチャットメッセージパネル（ScrollHandle不使用版）
 pub fn chat_messages_panel(
-    scroll_id: &str,
-    scroll_handle: &ScrollHandle,
     rows: &[ChatMessageRow],
+    scroll_handle: Option<&gpui::ScrollHandle>,
 ) -> Div {
-    let scroll_id = SharedString::from(scroll_id.to_owned());
-    div().flex_1().overflow_hidden().child(
-        with_overflow_y_scroll(div().id(scroll_id).size_full())
-            .track_scroll(scroll_handle)
-            .child(chat_message_list(rows)),
-    )
+    div()
+        .flex_1()
+        .h_full()
+        // .max_h(px(400.0))
+        .overflow_hidden()
+        .child(
+            if let Some(handle) = scroll_handle {
+                div()
+                    .id("chat-messages-panel")
+                    .track_scroll(handle)
+                    .map(|this| this.overflow_y_scrollbar().child(chat_message_list(rows)))
+            } else {
+                div()
+                    .id("chat-messages-panel")
+                    .overflow_y_scrollbar()
+                    .child(chat_message_list(rows))
+            },
+        )
 }

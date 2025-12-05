@@ -30,17 +30,12 @@ pub struct ChatControllerConfig {
     pub welcome_message: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum McpServerStatus {
+    #[default]
     Unknown,
     Ready,
     Error(String),
-}
-
-impl Default for McpServerStatus {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -647,6 +642,12 @@ impl ChatController {
 
     pub fn state_stream(&self) -> watch::Receiver<ChatState> {
         self.state_rx.clone()
+    }
+
+    /// Append a record to the console logs visible in the UI.
+    pub fn append_console_log(&self, kind: crate::ConsoleLogKind, content: impl Into<String>) {
+        let record = ConsoleLogRecord::new(kind, content.into());
+        self.inner.append_console_log(record);
     }
 
     fn spawn_ui_listener(inner: &Arc<ChatControllerInner>, mut rx: mpsc::UnboundedReceiver<()>) {

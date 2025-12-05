@@ -1,6 +1,8 @@
 //! チャットバブルコンポーネント
 
 use gpui::*;
+use gpui_component::skeleton::Skeleton;
+use gpui_component::StyledExt;
 
 /// メッセージタイプ
 #[derive(Clone, Debug, PartialEq)]
@@ -45,11 +47,28 @@ impl ChatBubble {
     /// レンダリング
     pub fn render(&self) -> impl IntoElement {
         div()
-            .p_3()
+            .w_full()
+            .p_2()
             .rounded(px(12.0))
             .bg(self.background_color())
             .text_color(self.text_color())
+            .text_sm()
             .child(self.content.clone())
+    }
+
+    /// スケルトンアニメーション付きの Thinking バブルを生成
+    pub fn thinking_placeholder() -> Div {
+        fn line(width: f32) -> Skeleton {
+            Skeleton::new().h(px(12.0)).w(px(width)).rounded(px(6.0))
+        }
+
+        div()
+            .w_full()
+            .p_3()
+            .rounded(px(12.0))
+            .bg(rgb(0x4b5563))
+            .opacity(0.85)
+            .child(div().v_flex().gap_1().child(line(160.0)).child(line(100.0)))
     }
 }
 
